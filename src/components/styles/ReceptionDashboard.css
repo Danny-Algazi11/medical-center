@@ -1,0 +1,358 @@
+/* ── Reception layout — main + right sidebar ───────────── */
+.reception-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Stat cards — reception variant ───────────────────── */
+.reception-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.reception-stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 20px 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.reception-stat-left {
+}
+
+.reception-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.reception-stat-num {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.reception-stat-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.reception-stat-icon {
+  font-size: 28px;
+  color: #e0e0e0;
+  flex-shrink: 0;
+}
+
+/* ── On Duty section ───────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-title {
+  font-family: "DM Serif Display", serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.doctor-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.doctor-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 18px 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.doctor-card-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--teal-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--teal);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.doctor-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.doctor-online-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+
+.doctor-online-dot.available {
+  background: #22c55e;
+}
+.doctor-online-dot.busy {
+  background: var(--red);
+}
+
+.doctor-card-body {
+  flex: 1;
+}
+
+.doctor-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.doctor-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.avail-badge {
+  padding: 3px 9px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.avail-badge.available {
+  background: var(--green-light);
+  color: var(--green);
+}
+.avail-badge.busy {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.doctor-card-specialty {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 300;
+  margin-bottom: 12px;
+}
+
+.doctor-card-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.doctor-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.doctor-stat-num {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.doctor-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+/* ── Upcoming Queue card ───────────────────────────────── */
+.queue-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+}
+
+.queue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.queue-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.queue-card-icons {
+  display: flex;
+  gap: 6px;
+}
+
+.queue-card-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--card-border);
+  text-align: center;
+}
+
+.queue-view-all {
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+  font-family: "DM Sans", sans-serif;
+}
+
+.queue-view-all:hover {
+  color: var(--green);
+}
+
+/* ── Quick Actions sidebar ─────────────────────────────── */
+.quick-actions-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  position: sticky;
+  top: calc(var(--topbar-height) + 28px);
+}
+
+.quick-actions-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quick-actions-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-action-btn {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 9px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.18s;
+  text-align: left;
+}
+
+.quick-action-btn.dark {
+  background: var(--sidebar-bg);
+  color: #fff;
+  border: none;
+}
+
+.quick-action-btn.dark:hover {
+  background: #1e3327;
+}
+
+.quick-action-btn.outline {
+  background: none;
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+}
+
+.quick-action-btn.outline:hover {
+  border-color: #aaa;
+}
+
+.quick-actions-divider {
+  height: 1px;
+  background: var(--card-border);
+  margin: 4px 0;
+}
+
+.find-patient-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 0 4px;
+  margin-bottom: 2px;
+}
+
+.find-patient-input {
+  position: relative;
+}
+
+.find-patient-input i {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.find-patient-input input {
+  width: 100%;
+  padding: 9px 12px 9px 32px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: #f9f9f9;
+  outline: none;
+  box-sizing: border-box;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+
+.find-patient-input input:focus {
+  border-color: var(--green);
+  background: #fff;
+}
+
+.find-patient-input input::placeholder {
+  color: var(--text-muted);
+}

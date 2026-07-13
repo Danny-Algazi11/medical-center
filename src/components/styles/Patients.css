@@ -1,0 +1,343 @@
+/* ── Patients layout — table + side panel ──────────────── */
+.patients-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  transition: grid-template-columns 0.25s ease;
+}
+
+.patients-layout.panel-open {
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+}
+
+/* ── Page toolbar ──────────────────────────────────────── */
+.patients-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.patients-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Clickable table row ───────────────────────────────── */
+.data-table tbody tr {
+  cursor: pointer;
+}
+
+.data-table tbody tr.row-selected td {
+  background: #f0f7f2;
+}
+
+/* ── Side panel ────────────────────────────────────────── */
+.patient-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  position: sticky;
+  top: calc(var(--topbar-height) + 28px);
+  max-height: calc(100svh - var(--topbar-height) - 56px);
+  overflow-y: auto;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.panel-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.panel-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  transition: background 0.15s;
+}
+
+.panel-close:hover {
+  background: #f0f0f0;
+}
+
+/* Avatar section */
+.panel-avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 18px 16px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.panel-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--teal-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--teal);
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.panel-online-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #fff;
+}
+
+.panel-patient-name {
+  font-family: "DM Serif Display", serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.panel-patient-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 300;
+  text-align: center;
+}
+
+/* Vitals row */
+.panel-vitals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.panel-vital {
+  padding: 14px 12px;
+  text-align: center;
+  border-right: 1px solid var(--card-border);
+}
+
+.panel-vital:last-child {
+  border-right: none;
+}
+
+.panel-vital-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.panel-vital-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Medical info */
+.panel-section {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.panel-section:last-of-type {
+  border-bottom: none;
+}
+
+.panel-section-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.panel-section-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.panel-section-icon.red {
+  background: var(--red-light);
+  color: var(--red);
+}
+.panel-section-icon.amber {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+
+.panel-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.panel-section-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+/* Panel action buttons */
+.panel-actions {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.panel-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-full {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-full.dark {
+  background: var(--sidebar-bg);
+  color: #fff;
+}
+
+.btn-full.dark:hover {
+  background: #1e3327;
+}
+
+.btn-full.outline {
+  background: none;
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+}
+
+.btn-full.outline:hover {
+  border-color: #aaa;
+}
+
+.btn-full.dashed {
+  background: none;
+  color: var(--text-secondary);
+  border: 1.5px dashed var(--card-border);
+}
+
+.btn-full.dashed:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* History cards */
+.panel-history {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-card {
+  border: 1px solid var(--card-border);
+  border-radius: 9px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.history-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.history-icon.emergency {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.history-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.history-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.history-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-weight: 300;
+}
