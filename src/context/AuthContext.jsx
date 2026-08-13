@@ -1,5 +1,6 @@
-import { createContext, useContext, useState } from "react";
-
+import { createContext, useContext, useState, useEffect } from "react";
+import { logout as apiLogout } from "../api/auth";
+import { login as apiLogin, getMe } from "../api/auth";
 const AuthContext = createContext(null);
 
 const MOCK_USERS = {
@@ -17,30 +18,32 @@ const MOCK_USERS = {
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = sessionStorage.getItem("mc_user");
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
+
+useEffect(() => {
+  getMe()
+    .then((data) => setUser(data.user))
+    .catch(() => setUser(null));
+}, []);
+
+
+
 
   async function login(email, password) {
-    // TODO: replace with real API call
-    const found = MOCK_USERS[email.toLowerCase()];
-    if (!found || password.length < 4)
-      throw new Error("Invalid email or password.");
-    const userData = { ...found, email };
-    sessionStorage.setItem("mc_user", JSON.stringify(userData));
-    setUser(userData);
-    return userData;
+    await apiLogin(email, password);     // calls /auth/login
+    const me = await getMe();            // calls /auth/me
+
+    setUser(me.user);
+    return me.user;
   }
 
-  function logout() {
-    sessionStorage.removeItem("mc_user");
-    setUser(null);
-  }
+
+
+async function logout() {
+  await apiLogout();     // calls /auth/logout
+  setUser(null);
+}
+
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

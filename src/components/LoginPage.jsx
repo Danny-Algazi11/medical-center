@@ -28,9 +28,22 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
-      const dest =
-        from || (user.role === "receptionist" ? "/reception" : "/dashboard");
-      navigate(dest, { replace: true });
+      let dest = from;
+
+if (!dest) {
+  if (user.role === "admin") {
+    dest = "/admin";
+  } else if (user.role === "receptionist") {
+    dest = "/reception";
+  } else if (user.role === "doctor") {
+    dest = "/doctor";
+  } else {
+    dest = "/dashboard"; // fallback
+  }
+}
+
+navigate(dest, { replace: true });
+
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
