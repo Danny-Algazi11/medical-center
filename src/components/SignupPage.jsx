@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { registerDoctor, completeDoctorProfile, verifyEmailCode, resendCode } from "../api/auth";
 import "./styles/SignupPage.css";
 
 /* ── Departments with IDs sent to API ──────────────────── */
@@ -222,10 +223,15 @@ export default function SignupPage() {
     }, 1000);
   }
 
-  function handleResend() {
-    // TODO: call resend API
+ async function handleResend() {
+  try {
+    await resendCode();
     startCountdown();
+  } catch (err) {
+    setError("Could not resend code. Try again later.");
   }
+}
+
 
   // ── Handlers ──
   function handleBasicChange(e) {
@@ -311,53 +317,58 @@ export default function SignupPage() {
   }
 
   // ── Submit handlers ──
-  async function handleBasicSubmit(e) {
-    e.preventDefault();
-    if (!validateBasic()) return;
-    setLoading(true);
-    try {
-      // TODO: POST /api/auth/register/init
-      await new Promise((r) => setTimeout(r, 600)); // mock delay
-      setStep(1);
-      setError("");
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
+ async function handleBasicSubmit(e) {
+  e.preventDefault();
+  if (!validateBasic()) return;
+  setLoading(true);
 
-  async function handleOtpSubmit(e) {
-    e.preventDefault();
-    if (!validateOtp()) return;
-    setLoading(true);
-    try {
-      // TODO: POST /api/auth/verify-email
-      await new Promise((r) => setTimeout(r, 600));
-      setStep(2);
-      setError("");
-    } catch {
-      setError("Invalid code. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  try {
+    const result = await registerDoctor(basic);
+    console.log("REGISTER RESPONSE:", result);
+    setStep(1);
+    setError("");
+  } catch (err) {
+    console.log("REGISTER ERROR:", err.response?.data);
+    console.error("Registration error:", err);
+    setError(err.response?.data?.message || "Registration failed.");
+  } finally {
+    setLoading(false);
   }
+}
 
-  async function handleProfileSubmit(e) {
-    e.preventDefault();
-    if (!validateProfile()) return;
-    setLoading(true);
-    try {
-      // TODO: POST /api/auth/register/complete
-      // Build FormData with all fields + file uploads
-      await new Promise((r) => setTimeout(r, 800));
-      navigate("/login");
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+
+async function handleOtpSubmit(e) {
+  e.preventDefault();
+  if (!validateOtp()) return;
+  setLoading(true);
+
+  try {
+    await verifyEmailCode(otp);
+    setStep(2); // move to complete profile
+    setError("");
+  } catch (err) {
+    setError(err.response?.data?.message || "Invalid code. Please try again.");
+  } finally {
+    setLoading(false);
   }
+}
+
+
+
+ async function handleProfileSubmit(e) {
+  e.preventDefault();
+  if (!validateProfile()) return;
+  setLoading(true);
+
+  try {
+    await completeDoctorProfile(profile, uploads, doctorPath);
+    navigate("/doctor"); // redirect after success
+  } catch (err) {
+    setError(err.response?.data?.message || "Profile completion failed.");
+  } finally {
+    setLoading(false);
+  }
+}
 
   // ── Left panel content changes by step ──
   const heroContent = {

@@ -23,14 +23,89 @@ export const logout = async () => {
 };
 
 
-// REGISTER DOCTOR
-export const registerDoctor = async (name, email, password, specialization) => {
-  const response = await api.post("/auth/register", {
-    name,
-    email,
-    password,
+export const registerDoctor = async (basic) => {
+  const payload = {
     role: "doctor",
-    specialization, // optional, if backend expects it
+    first_name: basic.firstName,
+    last_name: basic.lastName,
+    email: basic.email,
+    password: basic.password,
+    password_confirmation: basic.confirmPassword,
+    ID_card_number: basic.idCardNumber,
+  };
+
+  const response = await api.post("/auth/register", payload);
+
+  // ⭐ Save token after registration
+  const token = response.data.data.token;
+  localStorage.setItem("token", token);
+  console.log("REGISTER RESPONSE:", response);
+  console.log("REGISTER ERROR:", error.response);
+
+  return response.data;
+};
+
+
+export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
+  const form = new FormData();
+
+  // Shared fields
+  form.append("phone", profile.phone);
+  form.append("dob", profile.dob);
+  form.append("gender", profile.gender);
+  form.append("address", profile.address);
+  form.append("blood_type", profile.bloodType || "");
+
+  // Required by backend
+  form.append("device_name", "web");
+
+  // Doctor clinic mode
+  if (doctorPath === "join") {
+    form.append("registration_mode", "join_clinic");
+    form.append("clinic_id", profile.clinicId);
+  } else {
+    form.append("registration_mode", "create_clinic");
+    form.append("clinic_name", profile.clinicName);
+    form.append("clinic_address", profile.clinicAddress);
+    form.append("clinic_phone", profile.clinicPhone);
+  }
+
+  // Uploads
+  if (uploads.idPhoto?.length) {
+    form.append("id_card", uploads.idPhoto[0]);
+  }
+
+  if (uploads.personalPhoto?.length) {
+    form.append("photo", uploads.personalPhoto[0]);
+  }
+
+  if (uploads.licenses?.length) {
+    form.append("license_file", uploads.licenses[0]);
+  }
+
+  if (uploads.certificates?.length) {
+    uploads.certificates.forEach((file) => {
+      form.append("certificates[]", file);
+    });
+  }
+
+  if (uploads.clinicLicense?.length) {
+    form.append("clinic_license_file", uploads.clinicLicense[0]);
+  }
+
+  const response = await api.post("/auth/complete-profile", form, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
+
+  return response.data;
+};
+
+export const verifyEmailCode = async (code) => {
+  const response = await api.post("/auth/verify-code", { code });
+  return response.data;
+};
+
+export const resendCode = async () => {
+  const response = await api.post("/auth/resend-code");
   return response.data;
 };

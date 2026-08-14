@@ -11,5 +11,9 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+api.interceptors.request.use((config) => {
+  console.log("CALLING:", config.baseURL + config.url);
+  return config;
+});
 
 export default api;
