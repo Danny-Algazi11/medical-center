@@ -34,16 +34,20 @@ export const registerDoctor = async (basic) => {
     ID_card_number: basic.idCardNumber,
   };
 
-  const response = await api.post("/auth/register", payload);
+  try {
+    const response = await api.post("/auth/register", payload);
 
-  // ⭐ Save token after registration
-  const token = response.data.data.token;
-  localStorage.setItem("token", token);
-  console.log("REGISTER RESPONSE:", response);
-  console.log("REGISTER ERROR:", error.response);
+    console.log("REGISTER SUCCESS RESPONSE:", response);
 
-  return response.data;
+
+
+    return response.data.data;
+  } catch (error) {
+    console.log("REGISTER ERROR RESPONSE:", error.response);
+    throw error;
+  }
 };
+
 
 
 export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
@@ -101,7 +105,7 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
 };
 
 export const verifyEmailCode = async (code) => {
-  const response = await api.post("/auth/verify-code", { code });
+  const response = await api.post("/auth/email/verify-code", { code });
   return response.data;
 };
 
