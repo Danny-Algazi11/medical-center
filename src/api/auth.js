@@ -22,7 +22,6 @@ export const logout = async () => {
   localStorage.removeItem("token");
 };
 
-
 export const registerDoctor = async (basic) => {
   const payload = {
     role: "doctor",
@@ -39,7 +38,10 @@ export const registerDoctor = async (basic) => {
 
     console.log("REGISTER SUCCESS RESPONSE:", response);
 
-
+    const token = response.data.data?.token;
+    if (token) {
+      localStorage.setItem("token", token);
+    }
 
     return response.data.data;
   } catch (error) {
@@ -47,8 +49,6 @@ export const registerDoctor = async (basic) => {
     throw error;
   }
 };
-
-
 
 export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
   const form = new FormData();
@@ -111,12 +111,9 @@ export const verifyEmailCode = async (code) => {
     console.log("VERIFY SUCCESS RESPONSE:", response);
 
     const token = response.data.data?.token || response.data.token;
-
-    if (!token) {
-      throw new Error("Verification succeeded but no token was returned.");
+    if (token) {
+      localStorage.setItem("token", token);
     }
-
-    localStorage.setItem("token", token);
 
     return response.data;
   } catch (error) {
