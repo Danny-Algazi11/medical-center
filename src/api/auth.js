@@ -105,8 +105,24 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
 };
 
 export const verifyEmailCode = async (code) => {
-  const response = await api.post("/auth/email/verify-code", { code });
-  return response.data;
+  try {
+    const response = await api.post("/auth/email/verify-code", { code });
+
+    console.log("VERIFY SUCCESS RESPONSE:", response);
+
+    const token = response.data.data?.token || response.data.token;
+
+    if (!token) {
+      throw new Error("Verification succeeded but no token was returned.");
+    }
+
+    localStorage.setItem("token", token);
+
+    return response.data;
+  } catch (error) {
+    console.log("VERIFY ERROR RESPONSE:", error.response);
+    throw error;
+  }
 };
 
 export const resendCode = async () => {
