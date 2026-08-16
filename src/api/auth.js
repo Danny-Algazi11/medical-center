@@ -105,9 +105,14 @@ for (let pair of form.entries()) {
 }
 console.log("=== END FORM DATA ===");
 
-  const response = await api.post("/auth/complete-profile", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const token = localStorage.getItem("token");
+
+const response = await api.post("/auth/complete-profile", form, {
+  headers: {
+    "Content-Type": "multipart/form-data",
+    Authorization: `Bearer ${token}`,
+  },
+});
 
   return response.data;
 };
