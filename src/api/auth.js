@@ -59,6 +59,8 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
   form.append("gender", profile.gender);
   form.append("address", profile.address);
   form.append("blood_type", profile.bloodType || "");
+  form.append("practice_start_date", profile.practiceStartDate);
+  form.append("department_ids[]", profile.departmentId);
 
   // Required by backend
   form.append("device_name", "web");
@@ -96,6 +98,12 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
   if (uploads.clinicLicense?.length) {
     form.append("clinic_license_file", uploads.clinicLicense[0]);
   }
+
+  console.log("=== FORM DATA SENT TO BACKEND ===");
+for (let pair of form.entries()) {
+  console.log(pair[0] + ": ", pair[1]);
+}
+console.log("=== END FORM DATA ===");
 
   const response = await api.post("/auth/complete-profile", form, {
     headers: { "Content-Type": "multipart/form-data" },

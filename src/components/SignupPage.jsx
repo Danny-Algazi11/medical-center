@@ -182,6 +182,7 @@ export default function SignupPage() {
     dob: "",
     address: "",
     departmentId: "",
+    practiceStartDate: "" ,
     registrationMode: "",
     clinicId: "",
     clinicName: "",
@@ -285,7 +286,7 @@ export default function SignupPage() {
   }
 
   function validateProfile() {
-    if (!profile.phone || !profile.gender || !profile.dob || !profile.address) {
+    if (!profile.phone || !profile.gender || !profile.dob || !profile.address || !profile.practiceStartDate) {
       setError("Please fill in all required fields.");
       return false;
     }
@@ -792,8 +793,8 @@ async function handleOtpSubmit(e) {
                     required
                   >
                     <option value="">Select gender</option>
-                    <option>Male</option>
-                    <option>Female</option>
+                    <option>male</option>
+                    <option>female</option>
                   </select>
                 </div>
                 <div className="signup-field">
@@ -811,6 +812,21 @@ async function handleOtpSubmit(e) {
                   />
                 </div>
               </div>
+              <div className="signup-field">
+                <label className="signup-label" htmlFor="practiceStartDate">
+                  Practice start date
+                </label>
+                <input
+                  id="practiceStartDate"
+                  name="practiceStartDate"
+                  type="date"
+                  className="signup-input"
+                  value={profile.practiceStartDate}
+                  onChange={handleProfileChange}
+                  required
+                />
+              </div>
+
 
               <div className="signup-field">
                 <label className="signup-label" htmlFor="address">
