@@ -36,7 +36,7 @@ if (!dest) {
   } else if (user.role === "receptionist") {
     dest = "/reception";
   } else if (user.role === "doctor") {
-    dest = "/doctor";
+    dest = "/dashboard";
   } else {
     dest = "/dashboard"; // fallback
   }

@@ -59,8 +59,18 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
   form.append("gender", profile.gender);
   form.append("address", profile.address);
   form.append("blood_type", profile.bloodType || "");
-  form.append("practice_start_date", profile.practiceStartDate);
-  form.append("department_ids[]", profile.departmentId);
+
+  if (profile.practiceStartDate) {
+    form.append("practice_start_date", profile.practiceStartDate);
+  }
+
+  if (Array.isArray(profile.departmentIds)) {
+    profile.departmentIds.forEach((id) => {
+      if (id) form.append("department_ids[]", id);
+    });
+  } else if (profile.departmentIds) {
+    form.append("department_ids[]", profile.departmentIds);
+  }
 
   // Required by backend
   form.append("device_name", "web");
@@ -85,8 +95,8 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
     form.append("photo", uploads.personalPhoto[0]);
   }
 
-  if (uploads.licenses?.length) {
-    form.append("license_file", uploads.licenses[0]);
+  if (uploads.license?.length) {
+    form.append("license_file", uploads.license[0]);
   }
 
   if (uploads.certificates?.length) {
@@ -100,19 +110,20 @@ export const completeDoctorProfile = async (profile, uploads, doctorPath) => {
   }
 
   console.log("=== FORM DATA SENT TO BACKEND ===");
-for (let pair of form.entries()) {
-  console.log(pair[0] + ": ", pair[1]);
-}
-console.log("=== END FORM DATA ===");
+  for (let pair of form.entries()) {
+    console.log(pair[0] + ": ", pair[1]);
+  }
+  console.log("=== END FORM DATA ===");
 
   const token = localStorage.getItem("token");
 
-const response = await api.post("/auth/complete-profile", form, {
-  headers: {
-    "Content-Type": "multipart/form-data",
-    Authorization: `Bearer ${token}`,
-  },
-});
+  const response = await api.post("/auth/complete-profile", form, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 
   return response.data;
 };

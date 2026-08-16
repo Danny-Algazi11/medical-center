@@ -181,8 +181,8 @@ export default function SignupPage() {
     gender: "",
     dob: "",
     address: "",
-    departmentId: "",
-    practiceStartDate: "" ,
+    departmentIds: [],
+    practiceStartDate: "",
     registrationMode: "",
     clinicId: "",
     clinicName: "",
@@ -240,10 +240,26 @@ export default function SignupPage() {
     setError("");
   }
 
-  function handleProfileChange(e) {
-    setProfile((p) => ({ ...p, [e.target.name]: e.target.value }));
+ function handleProfileChange(e) {
+  const { name, value } = e.target;
+
+  // Special case for department
+  if (name === "departmentIds") {
+    setProfile((p) => ({
+      ...p,
+      departmentIds: [value], // array required by backend
+    }));
     setError("");
+    return;
   }
+
+  // Normal fields
+  setProfile((p) => ({ ...p, [name]: value }));
+  setError("");
+}
+
+
+  
 
   function setUpload(key, files) {
     setUploads((p) => ({ ...p, [key]: files }));
@@ -286,12 +302,16 @@ export default function SignupPage() {
   }
 
   function validateProfile() {
-    if (!profile.phone || !profile.gender || !profile.dob || !profile.address || !profile.practiceStartDate) {
+    if (!profile.phone || !profile.gender || !profile.dob || !profile.address) {
       setError("Please fill in all required fields.");
       return false;
     }
     if (role === "doctor") {
-      if (!profile.departmentId) {
+      if (!profile.practiceStartDate) {
+        setError("Please enter your practice start date.");
+        return false;
+      }
+      if (!profile.departmentIds || profile.departmentIds.length === 0){
         setError("Please select a department.");
         return false;
       }
@@ -363,7 +383,7 @@ async function handleOtpSubmit(e) {
 
   try {
     await completeDoctorProfile(profile, uploads, doctorPath);
-    navigate("/doctor"); // redirect after success
+    navigate("/dashboard"); // redirect after success
   } catch (err) {
     setError(err.response?.data?.message || "Profile completion failed.");
   } finally {
@@ -812,21 +832,22 @@ async function handleOtpSubmit(e) {
                   />
                 </div>
               </div>
-              <div className="signup-field">
-                <label className="signup-label" htmlFor="practiceStartDate">
-                  Practice start date
-                </label>
-                <input
-                  id="practiceStartDate"
-                  name="practiceStartDate"
-                  type="date"
-                  className="signup-input"
-                  value={profile.practiceStartDate}
-                  onChange={handleProfileChange}
-                  required
-                />
-              </div>
-
+              {role === "doctor" && (
+                <div className="signup-field">
+                  <label className="signup-label" htmlFor="practiceStartDate">
+                    Practice start date
+                  </label>
+                  <input
+                    id="practiceStartDate"
+                    name="practiceStartDate"
+                    type="date"
+                    className="signup-input"
+                    value={profile.practiceStartDate}
+                    onChange={handleProfileChange}
+                    required
+                  />
+                </div>
+              )}
 
               <div className="signup-field">
                 <label className="signup-label" htmlFor="address">
@@ -851,10 +872,10 @@ async function handleOtpSubmit(e) {
                       Department
                     </label>
                     <select
-                      id="departmentId"
-                      name="departmentId"
+                      id="departmentIds"
+                      name="departmentIds"
                       className="signup-select"
-                      value={profile.departmentId}
+                      value={profile.departmentIds[0] || ""}
                       onChange={handleProfileChange}
                       required
                     >
@@ -1053,3 +1074,4 @@ async function handleOtpSubmit(e) {
     </div>
   );
 }
+
