@@ -44,7 +44,24 @@ export default function LoginPage() {
 
       navigate(dest, { replace: true });
     } catch (err) {
-      setError(err.message || "Login failed. Please try again.");
+      const message = err.message || "";
+
+      // Backend rejects login for unapproved accounts with a message like
+      // "Your doctor account is pending administrator verification." —
+      // catch that specific case and send them to the pending-approval
+      // page instead of just showing a red error banner. We don't get a
+      // role back on a failed login, so we read it out of the message
+      // itself (the backend includes "doctor"/"receptionist" in the text).
+      if (/pending/i.test(message)) {
+        if (/receptionist/i.test(message)) {
+          navigate("/reception-pending", { replace: true });
+        } else {
+          navigate("/doctor-pending", { replace: true });
+        }
+        return;
+      }
+
+      setError(message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }

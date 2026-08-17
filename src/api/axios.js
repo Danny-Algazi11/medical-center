@@ -2,18 +2,46 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "http://localhost:8000/api/v1",
+  headers: {
+    Accept: "application/json",
+  },
 });
 
+// Attach the token to every request automatically.
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  return config;
-});
-api.interceptors.request.use((config) => {
   console.log("CALLING:", config.baseURL + config.url);
   return config;
 });
+
+// Normalize every error into a plain Error with .message/.errors/.status.
+// Without this, err.message is just axios's generic "Request failed with
+// status code 422" — the backend's actual message never reaches the UI.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const payload = error.response?.data;
+
+    if (status === 401) {
+      localStorage.removeItem("token");
+      window.dispatchEvent(new CustomEvent("mc:unauthorized"));
+    }
+
+    const normalized = new Error(
+      payload?.message ||
+        (status
+          ? `Request failed with status ${status}`
+          : "Network error — is the server running?"),
+    );
+    normalized.status = status;
+    normalized.errors = payload?.errors || null;
+
+    return Promise.reject(normalized);
+  },
+);
 
 export default api;
