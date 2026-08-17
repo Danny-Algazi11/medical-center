@@ -1,30 +1,29 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerDoctor, completeDoctorProfile, verifyEmailCode, resendCode } from "../api/auth";
+import {
+  registerDoctor,
+  completeDoctorProfile,
+  verifyEmailCode,
+  resendCode,
+} from "../api/auth";
 import "./styles/SignupPage.css";
 
 /* ── Departments with IDs sent to API ──────────────────── */
 const DEPARTMENTS = [
   { id: 1, name: "Cardiology" },
   { id: 2, name: "Pediatrics" },
-  { id: 3, name: "General Practice" },
+  { id: 3, name: "General Medicine" },
   { id: 4, name: "Dermatology" },
-  { id: 5, name: "Orthopedics" },
-  { id: 6, name: "Neurology" },
-  { id: 7, name: "Psychiatry" },
-  { id: 8, name: "Oncology" },
-  { id: 9, name: "Radiology" },
-  { id: 10, name: "Emergency Medicine" },
-  { id: 11, name: "Ophthalmology" },
-  { id: 12, name: "ENT" },
-  { id: 13, name: "Gynecology" },
-  { id: 14, name: "Urology" },
-  { id: 15, name: "Gastroenterology" },
-  { id: 16, name: "Endocrinology" },
-  { id: 17, name: "Nephrology" },
-  { id: 18, name: "Pulmonology" },
-  { id: 19, name: "Anesthesiology" },
-  { id: 20, name: "Pathology" },
+  { id: 5, name: "Neurology" },
+  { id: 6, name: "Psychiatry" },
+  { id: 7, name: "Gynecology" },
+  { id: 8, name: "ENT" },
+  { id: 9, name: "Ophthalmology" },
+  { id: 10, name: "Dentistry" },
+  { id: 11, name: "General Surgery" },
+  { id: 12, name: "Orthopedics" },
+  { id: 13, name: "General Medicine" }, // duplicate name in the seeder itself — not a typo here
+  { id: 14, name: "Internal Medicine" },
 ];
 
 const STEPS = ["Basic info", "Verify email", "Complete profile"];
@@ -166,7 +165,7 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     idCardNumber: "",
-    clinicId: "",
+    clinicCode: "",
   });
 
   // Step 1 — OTP
@@ -183,8 +182,9 @@ export default function SignupPage() {
     address: "",
     departmentIds: [],
     practiceStartDate: "",
+    consultationFee: "",
     registrationMode: "",
-    clinicId: "",
+    clinicCode: "",
     clinicName: "",
     clinicAddress: "",
     clinicPhone: "",
@@ -224,15 +224,14 @@ export default function SignupPage() {
     }, 1000);
   }
 
- async function handleResend() {
-  try {
-    await resendCode();
-    startCountdown();
-  } catch (err) {
-    setError("Could not resend code. Try again later.");
+  async function handleResend() {
+    try {
+      await resendCode();
+      startCountdown();
+    } catch (err) {
+      setError("Could not resend code. Try again later.");
+    }
   }
-}
-
 
   // ── Handlers ──
   function handleBasicChange(e) {
@@ -240,26 +239,23 @@ export default function SignupPage() {
     setError("");
   }
 
- function handleProfileChange(e) {
-  const { name, value } = e.target;
+  function handleProfileChange(e) {
+    const { name, value } = e.target;
 
-  // Special case for department
-  if (name === "departmentIds") {
-    setProfile((p) => ({
-      ...p,
-      departmentIds: [value], // array required by backend
-    }));
+    // Special case for department
+    if (name === "departmentIds") {
+      setProfile((p) => ({
+        ...p,
+        departmentIds: [value], // array required by backend
+      }));
+      setError("");
+      return;
+    }
+
+    // Normal fields
+    setProfile((p) => ({ ...p, [name]: value }));
     setError("");
-    return;
   }
-
-  // Normal fields
-  setProfile((p) => ({ ...p, [name]: value }));
-  setError("");
-}
-
-
-  
 
   function setUpload(key, files) {
     setUploads((p) => ({ ...p, [key]: files }));
@@ -286,8 +282,12 @@ export default function SignupPage() {
       setError("Passwords do not match.");
       return false;
     }
-    if (role === "reception" && !basic.clinicId) {
-      setError("Please enter your Clinic ID.");
+    if (role === "reception" && !basic.clinicCode) {
+      setError("Please enter your clinic code.");
+      return false;
+    }
+    if (role === "reception" && basic.clinicCode.length !== 10) {
+      setError("Clinic code must be exactly 10 characters.");
       return false;
     }
     return true;
@@ -311,7 +311,7 @@ export default function SignupPage() {
         setError("Please enter your practice start date.");
         return false;
       }
-      if (!profile.departmentIds || profile.departmentIds.length === 0){
+      if (!profile.departmentIds || profile.departmentIds.length === 0) {
         setError("Please select a department.");
         return false;
       }
@@ -329,8 +329,16 @@ export default function SignupPage() {
           return false;
         }
       }
-      if (doctorPath === "join" && !profile.clinicId) {
-        setError("Please enter the Clinic ID.");
+      if (doctorPath === "join" && !profile.clinicCode) {
+        setError("Please enter the clinic code.");
+        return false;
+      }
+      if (doctorPath === "join" && profile.clinicCode.length !== 10) {
+        setError("Clinic code must be exactly 10 characters.");
+        return false;
+      }
+      if (!profile.consultationFee) {
+        setError("Please enter your consultation fee.");
         return false;
       }
     }
@@ -338,58 +346,63 @@ export default function SignupPage() {
   }
 
   // ── Submit handlers ──
- async function handleBasicSubmit(e) {
-  e.preventDefault();
-  if (!validateBasic()) return;
-  setLoading(true);
+  async function handleBasicSubmit(e) {
+    e.preventDefault();
+    if (!validateBasic()) return;
+    setLoading(true);
 
-  try {
-    const result = await registerDoctor(basic);
-    console.log("REGISTER RESPONSE:", result);
-    setStep(1);
-    setError("");
-  } catch (err) {
-    console.log("REGISTER ERROR:", err.response?.data);
-    console.error("Registration error:", err);
-    setError(err.response?.data?.message || "Registration failed.");
-  } finally {
-    setLoading(false);
+    try {
+      const result = await registerDoctor(basic, role);
+      console.log("REGISTER RESPONSE:", result);
+      setStep(1);
+      setError("");
+    } catch (err) {
+      console.log("REGISTER ERROR:", err.response?.data);
+      console.error("Registration error:", err);
+      setError(err.response?.data?.message || "Registration failed.");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
+  async function handleOtpSubmit(e) {
+    e.preventDefault();
+    if (!validateOtp()) return;
+    setLoading(true);
 
-async function handleOtpSubmit(e) {
-  e.preventDefault();
-  if (!validateOtp()) return;
-  setLoading(true);
-
-  try {
-    await verifyEmailCode(otp);
-    setStep(2); // move to complete profile
-    setError("");
-  } catch (err) {
-    setError(err.response?.data?.message || "Invalid code. Please try again.");
-  } finally {
-    setLoading(false);
+    try {
+      await verifyEmailCode(otp);
+      setStep(2); // move to complete profile
+      setError("");
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Invalid code. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
+  async function handleProfileSubmit(e) {
+    e.preventDefault();
+    if (!validateProfile()) return;
+    setLoading(true);
 
+    try {
+      await completeDoctorProfile(profile, uploads, doctorPath, role);
 
- async function handleProfileSubmit(e) {
-  e.preventDefault();
-  if (!validateProfile()) return;
-  setLoading(true);
+      if (role === "doctor") {
+        navigate("/doctor-pending", { replace: true });
+        return;
+      }
 
-  try {
-    await completeDoctorProfile(profile, uploads, doctorPath);
-    navigate("/dashboard"); // redirect after success
-  } catch (err) {
-    setError(err.response?.data?.message || "Profile completion failed.");
-  } finally {
-    setLoading(false);
+      navigate("/reception-pending", { replace: true });
+    } catch (err) {
+      setError(err.response?.data?.message || "Profile completion failed.");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   // ── Left panel content changes by step ──
   const heroContent = {
@@ -659,26 +672,42 @@ async function handleOtpSubmit(e) {
                 <input
                   id="idCardNumber"
                   name="idCardNumber"
+                  inputMode="numeric"
                   className="signup-input"
                   placeholder="e.g. 1234567890"
                   value={basic.idCardNumber}
-                  onChange={handleBasicChange}
+                  onChange={(e) =>
+                    setBasic((p) => ({
+                      ...p,
+                      // Backend stores this as a SQL integer column, so
+                      // letters/dashes/spaces would fail at the DB layer.
+                      idCardNumber: e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 10),
+                    }))
+                  }
                   required
                 />
               </div>
 
               {role === "reception" && (
                 <div className="signup-field">
-                  <label className="signup-label" htmlFor="clinicId">
-                    Clinic ID
+                  <label className="signup-label" htmlFor="clinicCode">
+                    Clinic code
                   </label>
                   <input
-                    id="clinicId"
-                    name="clinicId"
+                    id="clinicCode"
+                    name="clinicCode"
                     className="signup-input"
-                    placeholder="Enter your clinic ID"
-                    value={basic.clinicId}
-                    onChange={handleBasicChange}
+                    placeholder="10-character clinic code"
+                    maxLength={10}
+                    value={basic.clinicCode}
+                    onChange={(e) =>
+                      setBasic((p) => ({
+                        ...p,
+                        clinicCode: e.target.value.slice(0, 10),
+                      }))
+                    }
                     required
                   />
                 </div>
@@ -844,6 +873,28 @@ async function handleOtpSubmit(e) {
                     className="signup-input"
                     value={profile.practiceStartDate}
                     onChange={handleProfileChange}
+                    max={new Date().toISOString().split("T")[0]}
+                    required
+                  />
+                </div>
+              )}
+
+              {role === "doctor" && (
+                <div className="signup-field">
+                  <label className="signup-label" htmlFor="consultationFee">
+                    Consultation fee
+                  </label>
+                  <input
+                    id="consultationFee"
+                    name="consultationFee"
+                    type="number"
+                    min="0"
+                    max="99999999.99"
+                    step="0.01"
+                    className="signup-input"
+                    placeholder="e.g. 50.00"
+                    value={profile.consultationFee}
+                    onChange={handleProfileChange}
                     required
                   />
                 </div>
@@ -984,16 +1035,22 @@ async function handleOtpSubmit(e) {
                   {/* Join clinic fields */}
                   {doctorPath === "join" && (
                     <div className="signup-field">
-                      <label className="signup-label" htmlFor="joinClinicId">
-                        Clinic ID
+                      <label className="signup-label" htmlFor="joinClinicCode">
+                        Clinic code
                       </label>
                       <input
-                        id="joinClinicId"
-                        name="clinicId"
+                        id="joinClinicCode"
+                        name="clinicCode"
                         className="signup-input"
-                        placeholder="Enter the clinic ID"
-                        value={profile.clinicId}
-                        onChange={handleProfileChange}
+                        placeholder="10-character clinic code"
+                        maxLength={10}
+                        value={profile.clinicCode}
+                        onChange={(e) =>
+                          setProfile((p) => ({
+                            ...p,
+                            clinicCode: e.target.value.slice(0, 10),
+                          }))
+                        }
                         required
                       />
                     </div>
@@ -1074,4 +1131,3 @@ async function handleOtpSubmit(e) {
     </div>
   );
 }
-

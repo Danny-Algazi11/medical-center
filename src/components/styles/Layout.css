@@ -36,6 +36,42 @@
   font-family: "DM Sans", sans-serif;
 }
 
+/* ── Dark theme ────────────────────────────────────────────
+   Applied when <html data-theme="dark">, set by SettingsContext.
+   Sidebar is already dark by default, so only chrome that's
+   currently light needs an override here. Page-specific
+   stylesheets (Admin.css, SignupPage.css, etc.) don't read
+   these variables yet, so they'll stay light for now — that's
+   the "later update" this settings page's note refers to. */
+[data-theme="dark"] {
+  --topbar-bg: #1b1c22;
+  --topbar-border: #2a2b33;
+  --content-bg: #121317;
+  --card-bg: #1b1c22;
+  --card-border: #2a2b33;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a8a8ad;
+  --text-muted: #74757c;
+}
+
+[data-theme="dark"] .topbar-search input {
+  background: #232429;
+  border-color: #2a2b33;
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .settings-option-card {
+  background: #1b1c22;
+}
+
+[data-theme="dark"] .settings-option-card.selected {
+  background: rgba(22, 105, 44, 0.18);
+}
+
+[data-theme="dark"] .settings-preview {
+  background: #202127;
+}
+
 /* ── Shell ─────────────────────────────────────────────── */
 .layout-shell {
   display: flex;

@@ -1,0 +1,259 @@
+/* ── Settings page ─────────────────────────────────────── */
+.settings-content {
+  max-width: 760px;
+}
+
+.settings-saved-flash {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--green-light);
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+  white-space: nowrap;
+}
+
+.settings-saved-flash.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.settings-saved-flash i {
+  font-size: 15px;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.settings-section-body {
+  padding: 20px 22px 22px;
+}
+
+.settings-section-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+/* ── Option cards (shared by theme + language) ── */
+.settings-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.settings-language-grid {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 480px;
+}
+
+.settings-option-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: #fff;
+  border: 1.5px solid var(--card-border);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: "DM Sans", sans-serif;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.settings-option-card:hover {
+  border-color: var(--green);
+}
+
+.settings-option-card.selected {
+  border-color: var(--green);
+  background: var(--green-light);
+  box-shadow: 0 0 0 1px var(--green);
+}
+
+.settings-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-option-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-option-check {
+  font-size: 16px;
+  color: var(--green);
+}
+
+.settings-option-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Theme mini-preview swatches ── */
+.settings-swatch {
+  width: 100%;
+  height: 62px;
+  border-radius: 7px;
+  overflow: hidden;
+  display: flex;
+  border: 1px solid var(--card-border);
+}
+
+.settings-swatch-bar {
+  width: 22%;
+  background: var(--sidebar-bg);
+  flex-shrink: 0;
+}
+
+.settings-swatch-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.settings-swatch-lines span {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+}
+
+.settings-swatch-light {
+  display: flex;
+  flex: 1;
+  background: #f5f5f5;
+}
+.settings-swatch-light .settings-swatch-lines span {
+  background: #d8d8d8;
+}
+.settings-swatch-light .settings-swatch-lines span:first-child {
+  background: var(--green-border);
+  width: 60%;
+}
+
+.settings-swatch-dark {
+  display: flex;
+  flex: 1;
+  background: #1b1c22;
+}
+.settings-swatch-dark .settings-swatch-lines span {
+  background: #3a3c46;
+}
+.settings-swatch-dark .settings-swatch-lines span:first-child {
+  background: var(--teal);
+  width: 60%;
+}
+
+.settings-swatch-split {
+  padding: 0;
+}
+.settings-swatch-split .settings-swatch-half {
+  flex: 1;
+  display: flex;
+}
+.settings-swatch-split .settings-swatch-half .settings-swatch-bar {
+  width: 30%;
+}
+
+/* ── Language cards ── */
+.settings-language-card {
+  flex-direction: row;
+  align-items: center;
+}
+
+.settings-language-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 9px;
+  background: var(--teal-light);
+  color: var(--teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.settings-language-card.selected .settings-language-badge {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ── Preview block ── */
+.settings-preview {
+  margin-top: 18px;
+  padding: 16px 18px;
+  background: #f9f9f9;
+  border: 1px dashed var(--card-border);
+  border-radius: 10px;
+}
+
+.settings-preview-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.settings-preview-text {
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Inline note ── */
+.settings-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.settings-note i {
+  font-size: 14px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .settings-option-grid {
+    grid-template-columns: 1fr;
+  }
+  .settings-language-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -30,20 +30,19 @@ export default function LoginPage() {
       const user = await login(form.email, form.password);
       let dest = from;
 
-if (!dest) {
-  if (user.role === "admin") {
-    dest = "/admin";
-  } else if (user.role === "receptionist") {
-    dest = "/reception";
-  } else if (user.role === "doctor") {
-    dest = "/dashboard";
-  } else {
-    dest = "/dashboard"; // fallback
-  }
-}
+      if (!dest) {
+        if (user.role === "admin") {
+          dest = "/admin";
+        } else if (user.role === "receptionist") {
+          dest = "/reception";
+        } else if (user.role === "doctor") {
+          dest = "/dashboard";
+        } else {
+          dest = "/dashboard"; // fallback
+        }
+      }
 
-navigate(dest, { replace: true });
-
+      navigate(dest, { replace: true });
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
@@ -119,16 +118,6 @@ navigate(dest, { replace: true });
             Create account
           </Link>
         </nav>
-
-        <div className="auth-demo-hint">
-          <strong>Demo credentials</strong>
-          <br />
-          Doctor: <code>doctor@medcenter.com</code>
-          <br />
-          Reception: <code>reception@medcenter.com</code>
-          <br />
-          Password: any 4+ characters
-        </div>
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           {error && (
