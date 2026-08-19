@@ -7,6 +7,7 @@ import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import SignupPage from "./components/SignupPage";
 import DoctorDashboard from "./components/DoctorDashboard";
+import DoctorProfilePage from "./components/DoctorProfilePage";
 import AppointmentsPage from "./components/AppointmentsPage";
 import PatientsPage from "./components/PatientsPage";
 import MessagesPage from "./components/MessagesPage";
@@ -21,6 +22,7 @@ import ComplaintsPage from "./admin/ComplaintsPage";
 import RatingsPage from "./admin/RatingsPage";
 import AnalyticsPage from "./admin/AnalyticsPage";
 import AuditLogsPage from "./admin/AuditLogsPage";
+import SchedulePage from "./components/SchedulePage";
 
 export default function App() {
   return (
@@ -46,6 +48,14 @@ export default function App() {
               element={
                 <PrivateRoute>
                   <DoctorDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <PrivateRoute>
+                  <DoctorProfilePage />
                 </PrivateRoute>
               }
             />
@@ -86,6 +96,14 @@ export default function App() {
               element={
                 <PrivateRoute>
                   <ReceptionDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/schedule"
+              element={
+                <PrivateRoute>
+                  <SchedulePage />
                 </PrivateRoute>
               }
             />

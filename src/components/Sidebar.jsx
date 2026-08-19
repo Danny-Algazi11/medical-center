@@ -4,6 +4,8 @@ import "./styles/Layout.css";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: "ti-layout-dashboard", label: "Dashboard" },
+  { to: "/profile", icon: "ti-user-circle", label: "Profile" },
+  { to: "/schedule", icon: "ti-calendar-week", label: "Schedule" },
   { to: "/appointments", icon: "ti-calendar-event", label: "Appointments" },
   { to: "/patients", icon: "ti-users", label: "Patients" },
   { to: "/medical-records", icon: "ti-file-medical", label: "Medical Records" },
