@@ -1,94 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
-import "../components/styles/Admin.css";
+import {
+  getDoctors,
+  approveDoctor,
+  reactivateDoctor,
+  rejectDoctor,
+  suspendDoctor,
+} from "../api/admin";
 
-const DOCTORS = [
-  {
-    id: 1,
-    initials: "DA",
-    name: "Dr. Ahmad Karimi",
-    spec: "Cardiology",
-    clinic: "City Central",
-    email: "a.karimi@medcenter.com",
-    phone: "+1 555-001",
-    status: "active",
-    sLabel: "Active",
-    verified: true,
-  },
-  {
-    id: 2,
-    initials: "JL",
-    name: "Dr. Julia Lee",
-    spec: "Pediatrics",
-    clinic: "North Branch",
-    email: "j.lee@medcenter.com",
-    phone: "+1 555-002",
-    status: "amber",
-    sLabel: "Pending",
-    verified: false,
-  },
-  {
-    id: 3,
-    initials: "MK",
-    name: "Dr. Marcus Kim",
-    spec: "General",
-    clinic: "East Branch",
-    email: "m.kim@medcenter.com",
-    phone: "+1 555-003",
-    status: "red",
-    sLabel: "Suspended",
-    verified: true,
-  },
-  {
-    id: 4,
-    initials: "TC",
-    name: "Dr. Tahani Chen",
-    spec: "Dermatology",
-    clinic: "City Central",
-    email: "t.chen@medcenter.com",
-    phone: "+1 555-004",
-    status: "green",
-    sLabel: "Active",
-    verified: true,
-  },
-  {
-    id: 5,
-    initials: "RS",
-    name: "Dr. Robert Sterling",
-    spec: "Orthopedics",
-    clinic: "South Branch",
-    email: "r.sterling@medcenter.com",
-    phone: "+1 555-005",
-    status: "active",
-    sLabel: "Active",
-    verified: true,
-  },
-  {
-    id: 6,
-    initials: "PN",
-    name: "Dr. Priya Nair",
-    spec: "Neurology",
-    clinic: "North Branch",
-    email: "p.nair@medcenter.com",
-    phone: "+1 555-006",
-    status: "amber",
-    sLabel: "Pending",
-    verified: false,
-  },
-  {
-    id: 7,
-    initials: "OB",
-    name: "Dr. Omar Bakr",
-    spec: "Cardiology",
-    clinic: "City Central",
-    email: "o.bakr@medcenter.com",
-    phone: "+1 555-007",
-    status: "gray",
-    sLabel: "Inactive",
-    verified: true,
-  },
-];
+import "../components/styles/Admin.css";
 
 const CLINICS = ["City Central", "North Branch", "East Branch", "South Branch"];
 const SPECIALTIES = [
@@ -112,13 +34,93 @@ const MODAL_INIT = {
 };
 
 export default function DoctorManagement() {
-  const [doctors, setDoctors] = useState(DOCTORS);
+  const navigate = useNavigate();
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(MODAL_INIT);
+  const [actionLoading, setActionLoading] = useState(null);
 
-  const filtered =
-    filter === "All" ? doctors : doctors.filter((d) => d.sLabel === filter);
+  // Load doctors on mount and filter change
+  useEffect(() => {
+    loadDoctors();
+  }, [filter]);
+
+  async function loadDoctors() {
+    setLoading(true);
+    setError("");
+    try {
+      const status =
+        filter === "Active"
+          ? "verified"
+          : filter === "Pending"
+            ? "pending"
+            : filter === "Suspended"
+              ? "suspended"
+              : undefined;
+
+      const res = await getDoctors(status ? { status } : undefined);
+      const doctorsList = res.data.data || [];
+
+      setDoctors(
+        doctorsList.map((d) => ({
+          id: d.id,
+          initials:
+            (d.account?.first_name?.[0] || d.first_name?.[0] || "D") +
+            (d.account?.last_name?.[0] || d.last_name?.[0] || ""),
+          name: `Dr. ${d.account?.first_name || d.first_name || ""} ${d.account?.last_name || d.last_name || ""}`.trim(),
+          spec:
+            d.profile?.departments?.[0]?.name ||
+            d.departments?.[0]?.name ||
+            "General",
+          clinic:
+            d.profile?.clinics?.[0]?.name ||
+            d.clinics?.[0]?.name ||
+            "Unassigned",
+          email: d.account?.email || d.email,
+          phone: d.account?.phone || d.phone || "N/A",
+          status: getStatusColor(d.verification_status),
+          sLabel: getStatusLabel(d.verification_status),
+          verified: d.verification_status === "verified",
+          verification_status: d.verification_status,
+          // Raw API record — passed to the detail page on row click so it
+          // can render instantly without a second fetch.
+          raw: d,
+        })),
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to load doctors",
+      );
+      console.error("Error loading doctors:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getStatusColor(status) {
+    const statusMap = {
+      pending: "amber",
+      verified: "green",
+      rejected: "red",
+      suspended: "red",
+    };
+    return statusMap[status] || "gray";
+  }
+
+  function getStatusLabel(status) {
+    const labelMap = {
+      pending: "Pending",
+      verified: "Active",
+      rejected: "Rejected",
+      suspended: "Suspended",
+    };
+    return labelMap[status] || "Inactive";
+  }
 
   function handleChange(e) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -126,38 +128,126 @@ export default function DoctorManagement() {
 
   function handleAdd(e) {
     e.preventDefault();
-    const newDoc = {
-      id: Date.now(),
-      initials: (form.firstName[0] || "") + (form.lastName[0] || ""),
-      name: `Dr. ${form.firstName} ${form.lastName}`,
-      spec: form.specialty,
-      clinic: form.clinic,
-      email: form.email,
-      phone: form.phone,
-      status: "amber",
-      sLabel: "Pending",
-      verified: false,
-    };
-    setDoctors((prev) => [newDoc, ...prev]);
-    setForm(MODAL_INIT);
     setShowModal(false);
+    setForm(MODAL_INIT);
   }
 
-  function changeStatus(id, status, sLabel) {
-    setDoctors((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status, sLabel } : d)),
-    );
+  function goToDoctor(d) {
+    navigate(`/admin/doctors/${d.id}`, { state: { doctor: d.raw } });
   }
 
-  function verifyDoctor(id) {
-    setDoctors((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? { ...d, verified: true, status: "green", sLabel: "Active" }
-          : d,
-      ),
-    );
+  async function handleApprove(doctorId) {
+    setActionLoading(doctorId);
+    try {
+      await approveDoctor(doctorId);
+      setDoctors((prev) =>
+        prev.map((d) =>
+          d.id === doctorId
+            ? {
+                ...d,
+                status: "green",
+                sLabel: "Active",
+                verified: true,
+                verification_status: "verified",
+              }
+            : d,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to approve doctor",
+      );
+    } finally {
+      setActionLoading(null);
+    }
   }
+
+  async function handleReject(doctorId) {
+    setActionLoading(doctorId);
+    try {
+      await rejectDoctor(doctorId, "Rejected by admin");
+      setDoctors((prev) =>
+        prev.map((d) =>
+          d.id === doctorId
+            ? {
+                ...d,
+                status: "red",
+                sLabel: "Rejected",
+                verified: false,
+                verification_status: "rejected",
+              }
+            : d,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to reject doctor",
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleSuspend(doctorId) {
+    setActionLoading(doctorId);
+    try {
+      await suspendDoctor(doctorId, "Suspended by admin");
+      setDoctors((prev) =>
+        prev.map((d) =>
+          d.id === doctorId
+            ? {
+                ...d,
+                status: "red",
+                sLabel: "Suspended",
+                verification_status: "suspended",
+              }
+            : d,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to suspend doctor",
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReactivate(doctorId) {
+    setActionLoading(doctorId);
+    try {
+      await reactivateDoctor(doctorId);
+      setDoctors((prev) =>
+        prev.map((d) =>
+          d.id === doctorId
+            ? {
+                ...d,
+                status: "green",
+                sLabel: "Active",
+                verification_status: "verified",
+              }
+            : d,
+        ),
+      );
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Failed to reactivate doctor",
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  const filtered =
+    filter === "All" ? doctors : doctors.filter((d) => d.sLabel === filter);
 
   return (
     <div className="adm-shell">
@@ -189,214 +279,269 @@ export default function DoctorManagement() {
             </div>
           </div>
 
-          {/* Stats row */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
-              gap: 14,
-              marginBottom: 20,
-            }}
-          >
-            {[
-              {
-                label: "Total",
-                num: doctors.length,
-                color: "var(--adm-text-primary)",
-              },
-              {
-                label: "Active",
-                num: doctors.filter((d) => d.sLabel === "Active").length,
-                color: "var(--adm-green)",
-              },
-              {
-                label: "Pending",
-                num: doctors.filter((d) => d.sLabel === "Pending").length,
-                color: "var(--adm-amber)",
-              },
-              {
-                label: "Suspended",
-                num: doctors.filter((d) => d.sLabel === "Suspended").length,
-                color: "var(--adm-red)",
-              },
-            ].map((s) => (
-              <div className="adm-stat-card" key={s.label}>
-                <div>
-                  <div className="adm-stat-label">{s.label} doctors</div>
-                  <div className="adm-stat-num" style={{ color: s.color }}>
-                    {s.num}
+          {/* Error display */}
+          {error && (
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "#fee",
+                border: "1px solid #fcc",
+                borderRadius: "8px",
+                marginBottom: "16px",
+                color: "#c00",
+                fontSize: "13px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Loading state */}
+          {loading && (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <p>Loading doctors...</p>
+            </div>
+          )}
+
+          {!loading && (
+            <>
+              {/* Stats row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4,1fr)",
+                  gap: 14,
+                  marginBottom: 20,
+                }}
+              >
+                {[
+                  {
+                    label: "Total",
+                    num: doctors.length,
+                    color: "var(--adm-text-primary)",
+                  },
+                  {
+                    label: "Active",
+                    num: doctors.filter((d) => d.sLabel === "Active").length,
+                    color: "var(--adm-green)",
+                  },
+                  {
+                    label: "Pending",
+                    num: doctors.filter((d) => d.sLabel === "Pending").length,
+                    color: "var(--adm-amber)",
+                  },
+                  {
+                    label: "Suspended",
+                    num: doctors.filter((d) => d.sLabel === "Suspended")
+                      .length,
+                    color: "var(--adm-red)",
+                  },
+                ].map((s) => (
+                  <div className="adm-stat-card" key={s.label}>
+                    <div>
+                      <div className="adm-stat-label">{s.label} doctors</div>
+                      <div className="adm-stat-num" style={{ color: s.color }}>
+                        {s.num}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Filter bar */}
+              <div className="adm-filter-bar">
+                {["All", "Active", "Pending", "Suspended", "Inactive"].map(
+                  (f) => (
+                    <button
+                      key={f}
+                      className={`adm-btn ${filter === f ? "adm-btn-dark" : "adm-btn-outline"}`}
+                      style={{ padding: "6px 14px", fontSize: 12 }}
+                      onClick={() => setFilter(f)}
+                    >
+                      {f}
+                    </button>
+                  ),
+                )}
+                <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
+                  <select className="adm-filter-select">
+                    <option>All specialties</option>
+                    {SPECIALTIES.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                  <select className="adm-filter-select">
+                    <option>All clinics</option>
+                    {CLINICS.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="adm-card">
+                <table className="adm-table">
+                  <thead>
+                    <tr>
+                      <th>Doctor</th>
+                      <th>Specialty</th>
+                      <th>Clinic</th>
+                      <th>Contact</th>
+                      <th>Status</th>
+                      <th>Verified</th>
+                      <th style={{ textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length > 0 ? (
+                      filtered.map((d) => (
+                        <tr
+                          key={d.id}
+                          onClick={() => goToDoctor(d)}
+                          style={{ cursor: "pointer" }}
+                          title="View doctor profile"
+                        >
+                          <td>
+                            <div className="adm-cell">
+                              <div className="adm-avatar">{d.initials}</div>
+                              <div>
+                                <div className="adm-cell-name">{d.name}</div>
+                                <div className="adm-cell-sub">{d.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td
+                            style={{
+                              fontSize: 12,
+                              color: "var(--adm-text-secondary)",
+                            }}
+                          >
+                            {d.spec}
+                          </td>
+                          <td
+                            style={{
+                              fontSize: 12,
+                              color: "var(--adm-text-secondary)",
+                            }}
+                          >
+                            {d.clinic}
+                          </td>
+                          <td
+                            style={{
+                              fontSize: 12,
+                              color: "var(--adm-text-secondary)",
+                            }}
+                          >
+                            {d.phone}
+                          </td>
+                          <td>
+                            <span className={`adm-badge adm-badge-${d.status}`}>
+                              {d.sLabel}
+                            </span>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            {d.verified ? (
+                              <span className="adm-badge adm-badge-teal">
+                                <i
+                                  className="ti ti-circle-check"
+                                  style={{ fontSize: 11 }}
+                                  aria-hidden="true"
+                                />{" "}
+                                Verified
+                              </span>
+                            ) : (
+                              <button
+                                className="adm-btn adm-btn-outline"
+                                style={{ padding: "4px 10px", fontSize: 11 }}
+                                onClick={() => handleApprove(d.id)}
+                                disabled={actionLoading === d.id}
+                              >
+                                {actionLoading === d.id ? "..." : "Approve"}
+                              </button>
+                            )}
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                justifyContent: "flex-end",
+                              }}
+                            >
+                              {d.sLabel === "Pending" && (
+                                <>
+                                  <button
+                                    className="adm-btn adm-btn-green"
+                                    style={{ padding: "5px 10px", fontSize: 11 }}
+                                    onClick={() => handleApprove(d.id)}
+                                    disabled={actionLoading === d.id}
+                                  >
+                                    {actionLoading === d.id ? "..." : "Approve"}
+                                  </button>
+                                  <button
+                                    className="adm-btn adm-btn-red"
+                                    style={{ padding: "5px 10px", fontSize: 11 }}
+                                    onClick={() => handleReject(d.id)}
+                                    disabled={actionLoading === d.id}
+                                  >
+                                    {actionLoading === d.id ? "..." : "Reject"}
+                                  </button>
+                                </>
+                              )}
+                              {d.sLabel === "Active" && (
+                                <button
+                                  className="adm-btn adm-btn-amber"
+                                  style={{ padding: "5px 10px", fontSize: 11 }}
+                                  onClick={() => handleSuspend(d.id)}
+                                  disabled={actionLoading === d.id}
+                                >
+                                  {actionLoading === d.id ? "..." : "Suspend"}
+                                </button>
+                              )}
+                              {d.sLabel === "Suspended" && (
+                                <button
+                                  className="adm-btn adm-btn-green"
+                                  style={{ padding: "5px 10px", fontSize: 11 }}
+                                  onClick={() => handleReactivate(d.id)}
+                                  disabled={actionLoading === d.id}
+                                >
+                                  {actionLoading === d.id
+                                    ? "..."
+                                    : "Reactivate"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
+                          No doctors found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                <div className="adm-table-footer">
+                  <span>
+                    Showing {filtered.length} of {doctors.length} doctors
+                  </span>
+                  <div className="adm-pagination">
+                    <button className="adm-page-btn">
+                      <i className="ti ti-chevron-left" />
+                    </button>
+                    <button className="adm-page-btn active">1</button>
+                    <button className="adm-page-btn">2</button>
+                    <button className="adm-page-btn">
+                      <i className="ti ti-chevron-right" />
+                    </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Filter bar */}
-          <div className="adm-filter-bar">
-            {["All", "Active", "Pending", "Suspended", "Inactive"].map((f) => (
-              <button
-                key={f}
-                className={`adm-btn ${filter === f ? "adm-btn-dark" : "adm-btn-outline"}`}
-                style={{ padding: "6px 14px", fontSize: 12 }}
-                onClick={() => setFilter(f)}
-              >
-                {f}
-              </button>
-            ))}
-            <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-              <select className="adm-filter-select">
-                <option>All specialties</option>
-                {SPECIALTIES.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-              <select className="adm-filter-select">
-                <option>All clinics</option>
-                {CLINICS.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="adm-card">
-            <table className="adm-table">
-              <thead>
-                <tr>
-                  <th>Doctor</th>
-                  <th>Specialty</th>
-                  <th>Clinic</th>
-                  <th>Contact</th>
-                  <th>Status</th>
-                  <th>Verified</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((d) => (
-                  <tr key={d.id}>
-                    <td>
-                      <div className="adm-cell">
-                        <div className="adm-avatar">{d.initials}</div>
-                        <div>
-                          <div className="adm-cell-name">{d.name}</div>
-                          <div className="adm-cell-sub">{d.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td
-                      style={{
-                        fontSize: 12,
-                        color: "var(--adm-text-secondary)",
-                      }}
-                    >
-                      {d.spec}
-                    </td>
-                    <td
-                      style={{
-                        fontSize: 12,
-                        color: "var(--adm-text-secondary)",
-                      }}
-                    >
-                      {d.clinic}
-                    </td>
-                    <td
-                      style={{
-                        fontSize: 12,
-                        color: "var(--adm-text-secondary)",
-                      }}
-                    >
-                      {d.phone}
-                    </td>
-                    <td>
-                      <span className={`adm-badge adm-badge-${d.status}`}>
-                        {d.sLabel}
-                      </span>
-                    </td>
-                    <td>
-                      {d.verified ? (
-                        <span className="adm-badge adm-badge-teal">
-                          <i
-                            className="ti ti-circle-check"
-                            style={{ fontSize: 11 }}
-                            aria-hidden="true"
-                          />{" "}
-                          Verified
-                        </span>
-                      ) : (
-                        <button
-                          className="adm-btn adm-btn-outline"
-                          style={{ padding: "4px 10px", fontSize: 11 }}
-                          onClick={() => verifyDoctor(d.id)}
-                        >
-                          Verify
-                        </button>
-                      )}
-                    </td>
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button className="adm-icon-btn" title="Edit">
-                          <i className="ti ti-edit" aria-hidden="true" />
-                        </button>
-                        {d.sLabel !== "Active" && (
-                          <button
-                            className="adm-btn adm-btn-green"
-                            style={{ padding: "5px 10px", fontSize: 11 }}
-                            onClick={() =>
-                              changeStatus(d.id, "green", "Active")
-                            }
-                          >
-                            Activate
-                          </button>
-                        )}
-                        {d.sLabel === "Active" && (
-                          <button
-                            className="adm-btn adm-btn-amber"
-                            style={{ padding: "5px 10px", fontSize: 11 }}
-                            onClick={() =>
-                              changeStatus(d.id, "amber", "Suspended")
-                            }
-                          >
-                            Suspend
-                          </button>
-                        )}
-                        <button
-                          className="adm-btn adm-btn-red"
-                          style={{ padding: "5px 10px", fontSize: 11 }}
-                          onClick={() => changeStatus(d.id, "gray", "Inactive")}
-                        >
-                          Deactivate
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="adm-table-footer">
-              <span>
-                Showing {filtered.length} of {doctors.length} doctors
-              </span>
-              <div className="adm-pagination">
-                <button className="adm-page-btn">
-                  <i className="ti ti-chevron-left" />
-                </button>
-                <button className="adm-page-btn active">1</button>
-                <button className="adm-page-btn">2</button>
-                <button className="adm-page-btn">
-                  <i className="ti ti-chevron-right" />
-                </button>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -411,8 +556,8 @@ export default function DoctorManagement() {
               <div>
                 <h2>Add new doctor</h2>
                 <p>
-                  Fill in the doctor's details. Status will be set to Pending
-                  until verified.
+                  Fill in the doctor's details. Note: Actual doctor registration
+                  happens through the signup flow. This is for manual admin entry.
                 </p>
               </div>
               <button

@@ -16,7 +16,9 @@ import SettingsPage from "./components/SettingsPage";
 import DoctorPendingApprovalPage from "./components/DoctorPendingApprovalPage";
 import AdminDashboard from "./admin/AdminDashboard";
 import DoctorManagement from "./admin/DoctorManagement";
+import DoctorDetailPage from "./admin/DoctorDetailPage";
 import ClinicManagement from "./admin/ClinicManagement";
+import ClinicDetailPage from "./admin/ClinicDetailPage";
 import ComplaintsPage from "./admin/ComplaintsPage";
 import RatingsPage from "./admin/RatingsPage";
 import AnalyticsPage from "./admin/AnalyticsPage";
@@ -115,10 +117,26 @@ export default function App() {
               }
             />
             <Route
+              path="/admin/doctors/:id"
+              element={
+                <PrivateRoute>
+                  <DoctorDetailPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/admin/clinics"
               element={
                 <PrivateRoute>
                   <ClinicManagement />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/clinics/:id"
+              element={
+                <PrivateRoute>
+                  <ClinicDetailPage />
                 </PrivateRoute>
               }
             />

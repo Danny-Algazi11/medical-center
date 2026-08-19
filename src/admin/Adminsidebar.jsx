@@ -42,7 +42,9 @@ export default function AdminSidebar() {
   const navigate = useNavigate();
 
   function handleLogout() {
-    sessionStorage.removeItem("mc_user");
+    // Standardized on localStorage + "token", matching axios.js's
+    // interceptor (which reads localStorage.getItem("token")).
+    localStorage.removeItem("token");
     navigate("/login", { replace: true });
   }
 

@@ -5,13 +5,6 @@ import { useAuth } from "../context/AuthContext";
 const ROUTE_ROLES = {
   "/reception": ["receptionist"],
   "/dashboard": ["doctor"],
-  "/admin": ["admin"],
-  "/admin/doctors": ["admin"],
-  "/admin/clinics": ["admin"],
-  "/admin/complaints": ["admin"],
-  "/admin/ratings": ["admin"],
-  "/admin/analytics": ["admin"],
-  "/admin/audit": ["admin"],
 };
 
 export default function PrivateRoute({ children }) {
@@ -23,8 +16,12 @@ export default function PrivateRoute({ children }) {
     return <Navigate to="/login" state={{ from: pathname }} replace />;
   }
 
-  // Logged in but wrong role for this route
-  const allowed = ROUTE_ROLES[pathname];
+  // Every /admin/* route (including detail pages like /admin/doctors/5)
+  // requires the admin role — matched by prefix since ROUTE_ROLES only
+  // does exact matches and can't express dynamic segments.
+  const allowed = pathname.startsWith("/admin")
+    ? ["admin"]
+    : ROUTE_ROLES[pathname];
   if (allowed && !allowed.includes(user.role)) {
     const fallback = user.role === "receptionist" ? "/reception" : "/dashboard";
     return <Navigate to={fallback} replace />;
