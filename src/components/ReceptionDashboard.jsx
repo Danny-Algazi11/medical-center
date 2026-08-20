@@ -1,130 +1,55 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { useAuth } from "../context/AuthContext";
 import "./styles/Layout.css";
 import "./styles/ReceptionDashboard.css";
+import "./styles/Appointments.css";
+import {
+  getReceptionistAppointments,
+  checkInAppointment,
+} from "../api/Appointments";
+import { searchDoctorsByClinic } from "../api/Schedule";
 
-/* ── Mock data ─────────────────────────────────────────── */
-const CURRENT_USER = {
-  name: "Sarah Jenkins",
-  role: "Head Receptionist",
-  initials: "SJ",
+const STATUS_META = {
+  scheduled: { label: "Expected", badge: "scheduled" },
+  checked_in: { label: "Checked-in", badge: "checked-in" },
+  in_progress: { label: "In progress", badge: "in-progress" },
+  completed: { label: "Completed", badge: "completed" },
+  cancelled: { label: "Cancelled", badge: "cancelled" },
+  no_show: { label: "No-show", badge: "no-show" },
 };
 
-const TABS = [
-  { to: "/dashboard", label: "Doctor Portal" },
-  { to: "/reception", label: "Reception" },
-  { to: "/analytics", label: "Analytics" },
-];
+function initialsOf(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return `${first}${last}`.toUpperCase() || "?";
+}
 
-const STATS = [
-  {
-    label: "Total Appointments",
-    num: 42,
-    sub: "+5 from yesterday",
-    icon: "ti-calendar-check",
-  },
-  { label: "Checked-in", num: 15, sub: null, icon: "ti-user-check" },
-  { label: "Waiting", num: 3, sub: null, icon: "ti-hourglass" },
-  { label: "No-show", num: 2, sub: null, icon: "ti-user-off" },
-];
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function todayISO() {
+  return isoDate(new Date());
+}
+function yesterdayISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return isoDate(d);
+}
 
-const DOCTORS = [
-  {
-    id: 1,
-    name: "Dr. Ahmad",
-    initials: "DA",
-    specialty: "Cardiology",
-    status: "available",
-    statusLabel: "AVAILABLE",
-    appts: 12,
-    waiting: 1,
-  },
-  {
-    id: 2,
-    name: "Dr. Chen",
-    initials: "DC",
-    specialty: "Pediatrics",
-    status: "busy",
-    statusLabel: "BUSY",
-    appts: 18,
-    waiting: 2,
-  },
-  {
-    id: 3,
-    name: "Dr. Sarah Jenkins",
-    initials: "SJ",
-    specialty: "General Practice",
-    status: "available",
-    statusLabel: "AVAILABLE",
-    appts: 8,
-    waiting: 0,
-  },
-  {
-    id: 4,
-    name: "Dr. Tahani Al-Jamil",
-    initials: "TA",
-    specialty: "Dermatology",
-    status: "busy",
-    statusLabel: "BUSY",
-    appts: 14,
-    waiting: 3,
-  },
-];
-
-const QUEUE = [
-  {
-    id: 1,
-    time: "09:30 AM",
-    name: "Michael Scott",
-    patientId: "P-4421",
-    initials: "MS",
-    doctor: "Dr. Ahmad",
-    status: "checked-in",
-    statusLabel: "Checked In",
-  },
-  {
-    id: 2,
-    time: "10:00 AM",
-    name: "Pam Beesly",
-    patientId: "P-8832",
-    initials: "PB",
-    doctor: "Dr. Chen",
-    status: "scheduled",
-    statusLabel: "Expected",
-  },
-  {
-    id: 3,
-    time: "10:15 AM",
-    name: "Jim Halpert",
-    patientId: "P-9102",
-    initials: "JH",
-    doctor: "Dr. Ahmad",
-    status: "scheduled",
-    statusLabel: "Expected",
-  },
-  {
-    id: 4,
-    time: "10:30 AM",
-    name: "Dwight Schrute",
-    patientId: "P-7761",
-    initials: "DS",
-    doctor: "Dr. Tahani Al-Jamil",
-    status: "waiting",
-    statusLabel: "Waiting",
-  },
-  {
-    id: 5,
-    time: "11:00 AM",
-    name: "Angela Martin",
-    patientId: "P-3391",
-    initials: "AM",
-    doctor: "Dr. Chen",
-    status: "scheduled",
-    statusLabel: "Expected",
-  },
-];
+function formatTime(slot) {
+  if (!slot?.starts_at) return "Walk-in";
+  const d = new Date(slot.starts_at);
+  if (Number.isNaN(d.getTime())) return slot.starts_at;
+  return d.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -133,8 +58,8 @@ function getGreeting() {
   return "Good evening";
 }
 
-function getDate() {
-  return new Date().toLocaleDateString("en-US", {
+function getDateLabel() {
+  return new Date().toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -142,44 +67,187 @@ function getDate() {
   });
 }
 
-/* ── Main page ─────────────────────────────────────────── */
 export default function ReceptionDashboard() {
-  const [findPatient, setFindPatient] = useState("");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const clinicId = user?.profile?.clinic?.[0]?.clinic_id || null;
+
+  const [doctors, setDoctors] = useState([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
+
+  const [todayAppointments, setTodayAppointments] = useState([]);
+  const [todayTotal, setTodayTotal] = useState(null); // accurate meta.total, may exceed the capped item list below
+  const [yesterdayTotal, setYesterdayTotal] = useState(null);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueError, setQueueError] = useState("");
+
+  const [actingId, setActingId] = useState(null);
+  const [actionError, setActionError] = useState("");
+  const [actionNotice, setActionNotice] = useState("");
+
+  const [findQuery, setFindQuery] = useState("");
+
+  useEffect(() => {
+    if (!clinicId) return;
+    setDoctorsLoading(true);
+    searchDoctorsByClinic(clinicId)
+      .then(setDoctors)
+      .catch(() => setDoctors([]))
+      .finally(() => setDoctorsLoading(false));
+  }, [clinicId]);
+
+  function loadToday() {
+    setQueueLoading(true);
+    setQueueError("");
+    // per_page capped at 50 server-side — a clinic with more than 50
+    // appointments in a single day would need real pagination here,
+    // not handled by this overview page.
+    getReceptionistAppointments({ date: todayISO(), per_page: 50 })
+      .then((result) => {
+        setTodayAppointments(result.items);
+        setTodayTotal(result.meta.total);
+      })
+      .catch((err) =>
+        setQueueError(err.message || "Couldn't load today's appointments."),
+      )
+      .finally(() => setQueueLoading(false));
+  }
+
+  useEffect(() => {
+    loadToday();
+    getReceptionistAppointments({ date: yesterdayISO(), per_page: 1 })
+      .then((result) => setYesterdayTotal(result.meta.total))
+      .catch(() => setYesterdayTotal(null));
+  }, []);
+
+  async function handleCheckIn(id) {
+    setActingId(id);
+    setActionError("");
+    setActionNotice("");
+    try {
+      const updated = await checkInAppointment(id);
+      setTodayAppointments((list) =>
+        list.map((a) => (a.id === id ? updated : a)),
+      );
+      setActionNotice("Patient checked in.");
+    } catch (err) {
+      setActionError(err.message || "Couldn't check in patient.");
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  function handleFindPatient(e) {
+    e.preventDefault();
+    navigate(
+      findQuery.trim()
+        ? `/patients?q=${encodeURIComponent(findQuery.trim())}`
+        : "/patients",
+    );
+  }
+
+  const checkedInCount = todayAppointments.filter(
+    (a) => a.status === "checked_in",
+  ).length;
+  const scheduledCount = todayAppointments.filter(
+    (a) => a.status === "scheduled",
+  ).length;
+  const noShowCount = todayAppointments.filter(
+    (a) => a.status === "no_show",
+  ).length;
+
+  const delta =
+    todayTotal != null && yesterdayTotal != null
+      ? todayTotal - yesterdayTotal
+      : null;
+
+  const STATS = [
+    {
+      label: "Total Appointments",
+      num: todayTotal,
+      sub:
+        delta != null
+          ? `${delta >= 0 ? "+" : ""}${delta} from yesterday`
+          : null,
+      icon: "ti-calendar-check",
+    },
+    {
+      label: "Checked-in",
+      num: checkedInCount,
+      sub: null,
+      icon: "ti-user-check",
+    },
+    { label: "Expected", num: scheduledCount, sub: null, icon: "ti-hourglass" },
+    { label: "No-show", num: noShowCount, sub: null, icon: "ti-user-off" },
+  ];
+
+  const doctorCards = doctors.map((doc) => {
+    const doctorAppts = todayAppointments.filter(
+      (a) => a.doctor?.id === doc.id,
+    );
+    const waiting = doctorAppts.filter((a) => a.status === "checked_in").length;
+    const busy = doctorAppts.some((a) => a.status === "in_progress");
+    return {
+      ...doc,
+      specialty: doc.departments?.[0]?.name || "—",
+      apptsCount: doctorAppts.length,
+      waiting,
+      busy,
+    };
+  });
+
+  const queue = [...todayAppointments]
+    .sort((a, b) => {
+      const ta = a.slot?.starts_at ? new Date(a.slot.starts_at).getTime() : 0;
+      const tb = b.slot?.starts_at ? new Date(b.slot.starts_at).getTime() : 0;
+      return ta - tb;
+    })
+    .slice(0, 10);
 
   return (
     <div className="layout-shell">
-      <Sidebar user={CURRENT_USER} />
+      <Sidebar />
 
       <div className="layout-main">
-        <Topbar
-          user={CURRENT_USER}
-          tabs={TABS}
-          searchPlaceholder="Search patients..."
-        />
+        <Topbar searchPlaceholder="Search patients..." />
 
         <main className="page-content">
-          {/* Page header */}
           <div className="page-header">
             <div className="page-header-left">
               <h1>
-                {getGreeting()}, {CURRENT_USER.name.split(" ")[0]}.
+                {getGreeting()}
+                {user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}.
               </h1>
               <p>Here is the overview for today's clinic operations.</p>
             </div>
             <div className="date-badge">
               <i className="ti ti-calendar" aria-hidden="true" />
-              {getDate()}
+              {getDateLabel()}
             </div>
           </div>
 
-          {/* Stat cards */}
+          {!clinicId && (
+            <div className="apt-banner apt-banner-error">
+              Your account isn't linked to a clinic yet.
+            </div>
+          )}
+          {queueError && (
+            <div className="apt-banner apt-banner-error">{queueError}</div>
+          )}
+          {actionNotice && (
+            <div className="apt-banner apt-banner-success">{actionNotice}</div>
+          )}
+          {actionError && (
+            <div className="apt-banner apt-banner-error">{actionError}</div>
+          )}
+
           <div className="reception-stats">
             {STATS.map(({ label, num, sub, icon }) => (
               <div className="reception-stat-card" key={label}>
                 <div className="reception-stat-left">
                   <div className="reception-stat-label">{label}</div>
                   <div className="reception-stat-num">
-                    {num}
+                    {queueLoading || num == null ? "—" : num}
                     {sub && <span className="reception-stat-sub">{sub}</span>}
                   </div>
                 </div>
@@ -191,37 +259,39 @@ export default function ReceptionDashboard() {
             ))}
           </div>
 
-          {/* Two-col layout */}
           <div className="reception-layout">
             <div>
-              {/* On Duty Today */}
               <div className="section-header">
                 <h2 className="section-title">On Duty Today</h2>
-                <button
-                  className="card-link"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  View All Schedule
-                </button>
               </div>
 
               <div className="doctor-cards">
-                {DOCTORS.map((doc) => (
+                {doctorsLoading && (
+                  <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    Loading…
+                  </p>
+                )}
+                {!doctorsLoading && doctorCards.length === 0 && (
+                  <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    No verified doctors with an active schedule found at your
+                    clinic yet.
+                  </p>
+                )}
+                {doctorCards.map((doc) => (
                   <div className="doctor-card" key={doc.id}>
                     <div className="doctor-card-avatar">
-                      {doc.initials}
-                      <div className={`doctor-online-dot ${doc.status}`} />
+                      {initialsOf(doc.name)}
+                      <div
+                        className={`doctor-online-dot ${doc.busy ? "busy" : "available"}`}
+                      />
                     </div>
                     <div className="doctor-card-body">
                       <div className="doctor-card-top">
                         <span className="doctor-card-name">{doc.name}</span>
-                        <span className={`avail-badge ${doc.status}`}>
-                          {doc.statusLabel}
+                        <span
+                          className={`avail-badge ${doc.busy ? "busy" : "available"}`}
+                        >
+                          {doc.busy ? "BUSY" : "AVAILABLE"}
                         </span>
                       </div>
                       <div className="doctor-card-specialty">
@@ -229,7 +299,9 @@ export default function ReceptionDashboard() {
                       </div>
                       <div className="doctor-card-stats">
                         <div className="doctor-stat">
-                          <span className="doctor-stat-num">{doc.appts}</span>
+                          <span className="doctor-stat-num">
+                            {doc.apptsCount}
+                          </span>
                           <span className="doctor-stat-label">Appts</span>
                         </div>
                         <div className="doctor-stat">
@@ -242,18 +314,15 @@ export default function ReceptionDashboard() {
                 ))}
               </div>
 
-              {/* Upcoming Queue */}
               <div className="queue-card">
                 <div className="queue-card-header">
                   <span className="queue-card-title">Upcoming Queue</span>
                   <div className="queue-card-icons">
-                    <button className="icon-btn" aria-label="Filter">
-                      <i
-                        className="ti ti-adjustments-horizontal"
-                        aria-hidden="true"
-                      />
-                    </button>
-                    <button className="icon-btn" aria-label="Refresh">
+                    <button
+                      className="icon-btn"
+                      aria-label="Refresh"
+                      onClick={loadToday}
+                    >
                       <i className="ti ti-refresh" aria-hidden="true" />
                     </button>
                   </div>
@@ -270,88 +339,162 @@ export default function ReceptionDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {QUEUE.map((row) => (
-                      <tr key={row.id}>
-                        <td style={{ fontSize: 14, fontWeight: 500 }}>
-                          {row.time}
-                        </td>
-                        <td>
-                          <div className="patient-cell">
-                            <div className="patient-avatar">{row.initials}</div>
-                            <div>
-                              <div className="patient-name">{row.name}</div>
-                              <div className="patient-id">
-                                ID: {row.patientId}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
+                    {queueLoading && (
+                      <tr>
                         <td
+                          colSpan={5}
                           style={{
-                            fontSize: 13,
-                            color: "var(--text-secondary)",
+                            textAlign: "center",
+                            padding: 24,
+                            color: "var(--text-muted)",
                           }}
                         >
-                          {row.doctor}
-                        </td>
-                        <td>
-                          <span className={`badge badge-${row.status}`}>
-                            {row.statusLabel}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          <button
-                            className="icon-btn"
-                            aria-label="More options"
-                          >
-                            <i
-                              className="ti ti-dots-vertical"
-                              aria-hidden="true"
-                            />
-                          </button>
+                          Loading…
                         </td>
                       </tr>
-                    ))}
+                    )}
+                    {!queueLoading && queue.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          style={{
+                            textAlign: "center",
+                            padding: 24,
+                            color: "var(--text-muted)",
+                          }}
+                        >
+                          No appointments today.
+                        </td>
+                      </tr>
+                    )}
+                    {queue.map((row) => {
+                      const meta = STATUS_META[row.status] || {
+                        label: row.status,
+                        badge: row.status,
+                      };
+                      return (
+                        <tr key={row.id}>
+                          <td style={{ fontSize: 14, fontWeight: 500 }}>
+                            {formatTime(row.slot)}
+                          </td>
+                          <td>
+                            <div className="patient-cell">
+                              <div className="patient-avatar">
+                                {initialsOf(row.patient?.name)}
+                              </div>
+                              <div>
+                                <div className="patient-name">
+                                  {row.patient?.name || "—"}
+                                </div>
+                                <div className="patient-id">
+                                  ID: {row.patient?.id ?? "—"}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td
+                            style={{
+                              fontSize: 13,
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {row.doctor?.name || "—"}
+                          </td>
+                          <td>
+                            <span className={`badge badge-${meta.badge}`}>
+                              {meta.label}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            {row.status === "scheduled" ? (
+                              <button
+                                className="btn-dark"
+                                disabled={actingId === row.id}
+                                onClick={() => handleCheckIn(row.id)}
+                              >
+                                {actingId === row.id
+                                  ? "Checking in…"
+                                  : "Check-in"}
+                              </button>
+                            ) : (
+                              <button
+                                className="icon-btn"
+                                aria-label="View in Appointments"
+                                onClick={() => navigate("/appointments")}
+                              >
+                                <i
+                                  className="ti ti-dots-vertical"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
                 <div className="queue-card-footer">
-                  <button className="queue-view-all">
-                    View All 42 Appointments
+                  <button
+                    className="queue-view-all"
+                    onClick={() => navigate("/appointments")}
+                  >
+                    View All {todayTotal ?? ""} Appointments
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Quick Actions sidebar */}
             <div className="quick-actions-card">
               <div className="quick-actions-header">Quick Actions</div>
               <div className="quick-actions-body">
-                <button className="quick-action-btn dark">
+                <button
+                  className="quick-action-btn dark"
+                  onClick={() =>
+                    navigate("/appointments", {
+                      state: { initialStatus: "scheduled" },
+                    })
+                  }
+                >
                   <i className="ti ti-user-check" aria-hidden="true" />
                   Patient Check-In
                 </button>
-                <button className="quick-action-btn outline">
-                  <i className="ti ti-calendar-event" aria-hidden="true" />
-                  Reschedule Appt
+                <button
+                  className="quick-action-btn outline"
+                  onClick={() =>
+                    navigate("/appointments", { state: { openBooking: true } })
+                  }
+                >
+                  <i className="ti ti-calendar-plus" aria-hidden="true" />
+                  New Appointment
                 </button>
-                <button className="quick-action-btn outline">
+                <button
+                  className="quick-action-btn outline"
+                  onClick={() =>
+                    navigate("/appointments", {
+                      state: { initialStatus: "scheduled" },
+                    })
+                  }
+                >
                   <i className="ti ti-user-off" aria-hidden="true" />
                   Mark No-Show
                 </button>
 
                 <div className="quick-actions-divider" />
 
-                <div className="find-patient-label">Find Patient</div>
-                <div className="find-patient-input">
-                  <i className="ti ti-search" aria-hidden="true" />
-                  <input
-                    type="text"
-                    placeholder="Name, ID, or Phone..."
-                    value={findPatient}
-                    onChange={(e) => setFindPatient(e.target.value)}
-                  />
-                </div>
+                <form onSubmit={handleFindPatient}>
+                  <div className="find-patient-label">Find Patient</div>
+                  <div className="find-patient-input">
+                    <i className="ti ti-search" aria-hidden="true" />
+                    <input
+                      type="text"
+                      placeholder="Name, ID, or Phone..."
+                      value={findQuery}
+                      onChange={(e) => setFindQuery(e.target.value)}
+                    />
+                  </div>
+                </form>
               </div>
             </div>
           </div>

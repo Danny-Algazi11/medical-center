@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ClinicProvider } from "./context/ClinicContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import PrivateRoute from "./components/PrivateRoute";
 
@@ -27,156 +28,158 @@ import SchedulePage from "./components/SchedulePage";
 export default function App() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route
-              path="/doctor-pending"
-              element={<DoctorPendingApprovalPage role="doctor" />}
-            />
-            <Route
-              path="/reception-pending"
-              element={<DoctorPendingApprovalPage role="reception" />}
-            />
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <PrivateRoute>
-                  <DoctorDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute>
-                  <DoctorProfilePage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/appointments"
-              element={
-                <PrivateRoute>
-                  <AppointmentsPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/patients"
-              element={
-                <PrivateRoute>
-                  <PatientsPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/messages"
-              element={
-                <PrivateRoute>
-                  <MessagesPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/medical-records"
-              element={
-                <PrivateRoute>
-                  <MedicalRecordsPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/reception"
-              element={
-                <PrivateRoute>
-                  <ReceptionDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/schedule"
-              element={
-                <PrivateRoute>
-                  <SchedulePage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <PrivateRoute>
-                  <SettingsPage />
-                </PrivateRoute>
-              }
-            />
-            {/* admin routes */}
-            <Route
-              path="/admin"
-              element={
-                <PrivateRoute>
-                  <AdminDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/doctors"
-              element={
-                <PrivateRoute>
-                  <DoctorManagement />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/clinics"
-              element={
-                <PrivateRoute>
-                  <ClinicManagement />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/complaints"
-              element={
-                <PrivateRoute>
-                  <ComplaintsPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/ratings"
-              element={
-                <PrivateRoute>
-                  <RatingsPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/analytics"
-              element={
-                <PrivateRoute>
-                  <AnalyticsPage />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/audit"
-              element={
-                <PrivateRoute>
-                  <AuditLogsPage />
-                </PrivateRoute>
-              }
-            />
-            {/* Catch-all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </SettingsProvider>
+      <ClinicProvider>
+        <SettingsProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route
+                path="/doctor-pending"
+                element={<DoctorPendingApprovalPage role="doctor" />}
+              />
+              <Route
+                path="/reception-pending"
+                element={<DoctorPendingApprovalPage role="reception" />}
+              />
+              {/* Protected routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <PrivateRoute>
+                    <DoctorDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <PrivateRoute>
+                    <DoctorProfilePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/appointments"
+                element={
+                  <PrivateRoute>
+                    <AppointmentsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/patients"
+                element={
+                  <PrivateRoute>
+                    <PatientsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/messages"
+                element={
+                  <PrivateRoute>
+                    <MessagesPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/medical-records"
+                element={
+                  <PrivateRoute>
+                    <MedicalRecordsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/reception"
+                element={
+                  <PrivateRoute>
+                    <ReceptionDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/schedule"
+                element={
+                  <PrivateRoute>
+                    <SchedulePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <PrivateRoute>
+                    <SettingsPage />
+                  </PrivateRoute>
+                }
+              />
+              {/* admin routes */}
+              <Route
+                path="/admin"
+                element={
+                  <PrivateRoute>
+                    <AdminDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/doctors"
+                element={
+                  <PrivateRoute>
+                    <DoctorManagement />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/clinics"
+                element={
+                  <PrivateRoute>
+                    <ClinicManagement />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/complaints"
+                element={
+                  <PrivateRoute>
+                    <ComplaintsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/ratings"
+                element={
+                  <PrivateRoute>
+                    <RatingsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <PrivateRoute>
+                    <AnalyticsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/audit"
+                element={
+                  <PrivateRoute>
+                    <AuditLogsPage />
+                  </PrivateRoute>
+                }
+              />
+              {/* Catch-all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </SettingsProvider>
+      </ClinicProvider>
     </AuthProvider>
   );
 }

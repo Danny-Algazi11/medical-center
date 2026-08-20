@@ -3,21 +3,68 @@ import { useAuth } from "../context/AuthContext";
 import "./styles/Layout.css";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", icon: "ti-layout-dashboard", label: "Dashboard" },
-  { to: "/profile", icon: "ti-user-circle", label: "Profile" },
-  { to: "/schedule", icon: "ti-calendar-week", label: "Schedule" },
-  { to: "/appointments", icon: "ti-calendar-event", label: "Appointments" },
-  { to: "/patients", icon: "ti-users", label: "Patients" },
-  { to: "/medical-records", icon: "ti-file-medical", label: "Medical Records" },
+  {
+    to: "/dashboard",
+    icon: "ti-layout-dashboard",
+    label: "Dashboard",
+    roles: ["doctor"],
+  },
+  {
+    to: "/reception",
+    icon: "ti-building-hospital",
+    label: "Reception",
+    roles: ["receptionist"],
+  },
+  {
+    to: "/profile",
+    icon: "ti-user-circle",
+    label: "Profile",
+    roles: ["doctor"],
+  },
+  {
+    to: "/schedule",
+    icon: "ti-calendar-week",
+    label: "Schedule",
+    roles: ["doctor", "receptionist"],
+  },
+  {
+    to: "/appointments",
+    icon: "ti-calendar-event",
+    label: "Appointments",
+    roles: ["doctor", "receptionist"],
+  },
+  {
+    to: "/patients",
+    icon: "ti-users",
+    label: "Patients",
+    roles: ["receptionist"],
+  },
+  {
+    to: "/medical-records",
+    icon: "ti-report-medical",
+    label: "Medical Records",
+    roles: ["doctor"],
+  },
   { to: "/messages", icon: "ti-message-circle", label: "Messages" },
-  { to: "/reception", icon: "ti-building-hospital", label: "Reception" },
   { to: "/settings", icon: "ti-settings", label: "Settings" },
 ];
+
+function initialsOf(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return `${first}${last}`.toUpperCase() || "?";
+}
 
 export default function Sidebar() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.roles || item.roles.includes(user?.role),
+  );
 
   function handleLogout() {
     logout();
@@ -40,7 +87,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map(({ to, icon, label }) => (
+        {navItems.map(({ to, icon, label }) => (
           <Link
             key={to}
             to={to}
@@ -66,9 +113,9 @@ export default function Sidebar() {
         {/* Live user from auth context */}
         {user && (
           <div className="sidebar-user">
-            <div className="sidebar-avatar">{user.initials}</div>
+            <div className="sidebar-avatar">{initialsOf(user.full_name)}</div>
             <div>
-              <div className="sidebar-user-name">{user.name}</div>
+              <div className="sidebar-user-name">{user.full_name}</div>
               <div className="sidebar-user-role">
                 {user.role === "receptionist" ? "Receptionist" : "Doctor"}
               </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useAuth } from "../context/AuthContext";
+import { useClinic } from "../context/ClinicContext";
 import "./styles/Layout.css";
 import "./styles/Schedule.css";
 import {
@@ -169,9 +170,10 @@ export default function SchedulePage() {
   const { user } = useAuth();
   const role = user?.role; // "doctor" | "receptionist"
 
-  // ── Doctor context: pick which clinic (a doctor can work at several) ──
-  const doctorClinics = useMemo(() => user?.profile?.clinics || [], [user]);
-  const [clinicId, setClinicId] = useState(null);
+  // ── Doctor context: which clinic — now shared globally via the Topbar
+  // selector instead of a page-local dropdown, so it stays in sync with
+  // every other page.
+  const { clinics: doctorClinics, selectedClinicId: clinicId } = useClinic();
 
   // ── Receptionist context: pick which doctor at their one clinic ──
   const receptionistClinicId = user?.profile?.clinic?.[0]?.clinic_id || null;
@@ -223,9 +225,7 @@ export default function SchedulePage() {
   // ── Establish role-based context on mount ──
   useEffect(() => {
     if (role === "doctor") {
-      if (doctorClinics.length) {
-        setClinicId(doctorClinics[0].clinic_id);
-      } else {
+      if (!doctorClinics.length) {
         setLoading(false);
         setLoadError(
           "You're not linked to any clinic yet — join or create one from your profile page first.",
@@ -602,25 +602,6 @@ export default function SchedulePage() {
                     {doctorOptions.map((doc) => (
                       <option key={doc.id} value={doc.id}>
                         {doc.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {role === "doctor" && doctorClinics.length > 1 && (
-              <div className="sch-context-switcher">
-                <div className="sch-field">
-                  <label className="sch-label">Clinic</label>
-                  <select
-                    className="sch-input"
-                    value={clinicId || ""}
-                    onChange={(e) => setClinicId(Number(e.target.value))}
-                  >
-                    {doctorClinics.map((c) => (
-                      <option key={c.clinic_id} value={c.clinic_id}>
-                        {c.clinic_name}
                       </option>
                     ))}
                   </select>

@@ -146,3 +146,15 @@ export const searchDoctorsByClinic = async (clinicId) => {
   });
   return response.data.data;
 };
+
+// GET /doctors/{doctorId}/availability — public, no auth role required.
+// Already filtered to SlotStatus::Available by the backend — every slot
+// returned here is genuinely bookable right now. Optional clinic_id
+// narrows to one of the doctor's clinics; date_from/date_to default to
+// today..+14 days server-side if omitted.
+export const getDoctorAvailability = async (doctorId, params = {}) => {
+  const response = await api.get(`/doctors/${doctorId}/availability`, {
+    params,
+  });
+  return response.data.data;
+};
