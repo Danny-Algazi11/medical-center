@@ -14,3 +14,15 @@ export const getAppointmentMedicalRecord = async (appointmentId) => {
   );
   return response.data.data;
 };
+
+// GET /doctor/appointments/{patientId}/profile — role:doctor. Lighter-
+// weight than the medical-record endpoint above: no AccessGuard time-
+// window check, just the patient's summary plus every encounter tied to
+// an appointment between this doctor and this patient, regardless of
+// that appointment's status. Good for a quick "who is this patient"
+// lookup from an appointment list row, not a substitute for the
+// access-gated full record.
+export const getPatientProfile = async (patientId) => {
+  const response = await api.get(`/doctor/appointments/${patientId}/profile`);
+  return response.data.data;
+};

@@ -5,8 +5,14 @@ import "./styles/Layout.css";
 import "./styles/Medicalrecords.css";
 import "./styles/Appointments.css";
 import { useClinic } from "../context/ClinicContext";
-import { getDoctorAppointments } from "../api/Appointments";
+import { getDoctorAppointments, startAppointment } from "../api/Appointments";
 import { getAppointmentMedicalRecord } from "../api/MedicalRecords";
+import {
+  getEncounter,
+  addClinicalNote,
+  addDiagnosis,
+  addPrescriptionItem,
+} from "../api/Encounters";
 
 const RECORD_TABS = [
   "Medical History",
@@ -49,6 +55,36 @@ export default function MedicalRecordsPage() {
   const [recordData, setRecordData] = useState(null); // { access_level, patient, medical_record }
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
+
+  // The encounter tied to the currently-selected appointment specifically
+  // (not the patient's whole history) — this is what gets written to.
+  const [currentEncounter, setCurrentEncounter] = useState(null);
+  const [encounterLoading, setEncounterLoading] = useState(false);
+  const [encounterError, setEncounterError] = useState("");
+
+  const [startingConsult, setStartingConsult] = useState(false);
+  const [startError, setStartError] = useState("");
+
+  const [noteInput, setNoteInput] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteError, setNoteError] = useState("");
+
+  const [diagnosisLabel, setDiagnosisLabel] = useState("");
+  const [diagnosisDescription, setDiagnosisDescription] = useState("");
+  const [diagnosisSaving, setDiagnosisSaving] = useState(false);
+  const [diagnosisError, setDiagnosisError] = useState("");
+
+  const [rxForm, setRxForm] = useState({
+    drug_name: "",
+    form: "",
+    dosage: "",
+    frequency: "",
+    duration: "",
+    route: "",
+    notes: "",
+  });
+  const [rxSaving, setRxSaving] = useState(false);
+  const [rxError, setRxError] = useState("");
 
   // Load the queue — "active" merges checked_in + in_progress (the two
   // states AccessGuard grants full access for); "completed" intentionally
@@ -110,6 +146,158 @@ export default function MedicalRecordsPage() {
       )
       .finally(() => setRecordLoading(false));
   }, [activeAppointmentId]);
+
+  // Load the encounter for THIS specific visit (separate from the
+  // patient's history list inside the medical record response).
+  useEffect(() => {
+    if (!activeAppointmentId) return;
+    setEncounterLoading(true);
+    setEncounterError("");
+    setCurrentEncounter(null);
+    setNoteInput("");
+    setDiagnosisLabel("");
+    setDiagnosisDescription("");
+    setRxForm({
+      drug_name: "",
+      form: "",
+      dosage: "",
+      frequency: "",
+      duration: "",
+      route: "",
+      notes: "",
+    });
+    getEncounter(activeAppointmentId)
+      .then(setCurrentEncounter)
+      .catch((err) =>
+        setEncounterError(
+          err.message || "Couldn't load this visit's documentation.",
+        ),
+      )
+      .finally(() => setEncounterLoading(false));
+  }, [activeAppointmentId]);
+
+  const activeAppointment = queue.find((a) => a.id === activeAppointmentId);
+  const canWrite = activeAppointment?.status === "in_progress";
+
+  async function handleStartConsultation() {
+    if (!activeAppointmentId) return;
+    setStartingConsult(true);
+    setStartError("");
+    try {
+      const updated = await startAppointment(activeAppointmentId);
+      setQueue((list) => list.map((a) => (a.id === updated.id ? updated : a)));
+    } catch (err) {
+      setStartError(err.message || "Couldn't start the consultation.");
+    } finally {
+      setStartingConsult(false);
+    }
+  }
+
+  async function handleAddNote(e) {
+    e.preventDefault();
+    if (!noteInput.trim()) return;
+    setNoteSaving(true);
+    setNoteError("");
+    try {
+      const note = await addClinicalNote(activeAppointmentId, noteInput.trim());
+      setCurrentEncounter((enc) => ({
+        id: enc?.id ?? note.encounter_id ?? null,
+        appointment_id: activeAppointmentId,
+        visit_type: enc?.visit_type,
+        clinical_notes: [...(enc?.clinical_notes || []), note],
+        diagnoses: enc?.diagnoses || [],
+        prescription: enc?.prescription || null,
+        created_at: enc?.created_at,
+      }));
+      setNoteInput("");
+    } catch (err) {
+      setNoteError(
+        err.errors
+          ? Object.values(err.errors)[0][0]
+          : err.message || "Couldn't add note.",
+      );
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
+  async function handleAddDiagnosis(e) {
+    e.preventDefault();
+    if (!diagnosisLabel.trim()) return;
+    setDiagnosisSaving(true);
+    setDiagnosisError("");
+    try {
+      const diagnosis = await addDiagnosis(activeAppointmentId, {
+        label: diagnosisLabel.trim(),
+        description: diagnosisDescription.trim(),
+      });
+      setCurrentEncounter((enc) => ({
+        id: enc?.id ?? diagnosis.encounter_id ?? null,
+        appointment_id: activeAppointmentId,
+        visit_type: enc?.visit_type,
+        clinical_notes: enc?.clinical_notes || [],
+        diagnoses: [...(enc?.diagnoses || []), diagnosis],
+        prescription: enc?.prescription || null,
+        created_at: enc?.created_at,
+      }));
+      setDiagnosisLabel("");
+      setDiagnosisDescription("");
+    } catch (err) {
+      setDiagnosisError(
+        err.errors
+          ? Object.values(err.errors)[0][0]
+          : err.message || "Couldn't add diagnosis.",
+      );
+    } finally {
+      setDiagnosisSaving(false);
+    }
+  }
+
+  async function handleAddPrescriptionItem(e) {
+    e.preventDefault();
+    if (!rxForm.drug_name.trim()) return;
+    setRxSaving(true);
+    setRxError("");
+    try {
+      const prescription = await addPrescriptionItem(activeAppointmentId, {
+        drug_name: rxForm.drug_name.trim(),
+        form: rxForm.form || undefined,
+        dosage: rxForm.dosage || undefined,
+        frequency: rxForm.frequency || undefined,
+        duration: rxForm.duration || undefined,
+        route: rxForm.route || undefined,
+        notes: rxForm.notes || undefined,
+      });
+      // The backend returns the whole prescription (all items so far),
+      // not just the new one — replace wholesale.
+      setCurrentEncounter((enc) => ({
+        id: enc?.id ?? null,
+        appointment_id: activeAppointmentId,
+        visit_type: enc?.visit_type,
+        clinical_notes: enc?.clinical_notes || [],
+        diagnoses: enc?.diagnoses || [],
+        prescription,
+        created_at: enc?.created_at,
+      }));
+      setRxForm({
+        drug_name: "",
+        form: "",
+        dosage: "",
+        frequency: "",
+        duration: "",
+        route: "",
+        notes: "",
+      });
+    } catch (err) {
+      setRxError(
+        err.errors
+          ? Object.values(err.errors)[0][0]
+          : err.message || "Couldn't add prescription item.",
+      );
+    } finally {
+      setRxSaving(false);
+    }
+  }
 
   const patient = recordData?.patient;
   const record = recordData?.medical_record;
@@ -300,29 +488,352 @@ export default function MedicalRecordsPage() {
                   </div>
 
                   <div className="workspace-scroll">
-                    <div className="ws-card">
-                      <div className="ws-card-header">
-                        <div className="ws-card-title">
-                          <i className="ti ti-stethoscope" aria-hidden="true" />
-                          Clinical Documentation
-                        </div>
-                        <span className="ws-card-badge">READ-ONLY FOR NOW</span>
+                    {startError && (
+                      <div className="apt-banner apt-banner-error">
+                        {startError}
                       </div>
-                      <p
-                        style={{
-                          fontSize: 13,
-                          color: "var(--text-muted)",
-                          padding: "0 4px 4px",
-                        }}
-                      >
-                        Adding notes, diagnoses, or prescriptions during a visit
-                        isn't available yet — it's blocked by a backend bug, not
-                        a missing feature here. Existing encounters for this
-                        patient are shown below.
+                    )}
+                    {encounterError && (
+                      <div className="apt-banner apt-banner-error">
+                        {encounterError}
+                      </div>
+                    )}
+
+                    {encounterLoading && (
+                      <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                        Loading this visit's documentation…
                       </p>
+                    )}
+
+                    {!encounterLoading && !canWrite && (
+                      <div className="ws-card">
+                        <div className="ws-card-header">
+                          <div className="ws-card-title">
+                            <i
+                              className="ti ti-stethoscope"
+                              aria-hidden="true"
+                            />
+                            Clinical Documentation
+                          </div>
+                        </div>
+                        {activeAppointment?.status === "checked_in" ? (
+                          <div style={{ padding: "0 4px 4px" }}>
+                            <p
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              Notes, diagnoses, and prescriptions can only be
+                              added once the consultation is in progress.
+                            </p>
+                            <button
+                              className="btn-dark"
+                              disabled={startingConsult}
+                              onClick={handleStartConsultation}
+                            >
+                              {startingConsult
+                                ? "Starting…"
+                                : "Start Consultation"}
+                            </button>
+                          </div>
+                        ) : (
+                          <p
+                            style={{
+                              fontSize: 13,
+                              color: "var(--text-muted)",
+                              padding: "0 4px 4px",
+                            }}
+                          >
+                            {activeAppointment
+                              ? "This visit isn't in progress, so documentation isn't available right now."
+                              : "Select a patient from the queue to document a visit."}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {!encounterLoading && canWrite && (
+                      <>
+                        {/* Notes */}
+                        <div className="ws-card">
+                          <div className="ws-card-header">
+                            <div className="ws-card-title">
+                              <i className="ti ti-notes" aria-hidden="true" />
+                              Notes
+                            </div>
+                          </div>
+                          {(currentEncounter?.clinical_notes || []).map((n) => (
+                            <p
+                              key={n.id}
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-primary)",
+                                padding: "0 4px",
+                              }}
+                            >
+                              {n.content}
+                            </p>
+                          ))}
+                          <form
+                            onSubmit={handleAddNote}
+                            style={{ padding: "8px 4px 4px" }}
+                          >
+                            <textarea
+                              className="modal-input"
+                              rows={2}
+                              maxLength={5000}
+                              placeholder="Add a clinical note…"
+                              value={noteInput}
+                              onChange={(e) => setNoteInput(e.target.value)}
+                            />
+                            {noteError && (
+                              <div
+                                style={{ fontSize: 12, color: "var(--red)" }}
+                              >
+                                {noteError}
+                              </div>
+                            )}
+                            <button
+                              type="submit"
+                              className="btn-outline"
+                              style={{ marginTop: 8 }}
+                              disabled={noteSaving || !noteInput.trim()}
+                            >
+                              {noteSaving ? "Adding…" : "Add Note"}
+                            </button>
+                          </form>
+                        </div>
+
+                        {/* Diagnoses */}
+                        <div className="ws-card">
+                          <div className="ws-card-header">
+                            <div className="ws-card-title">
+                              <i
+                                className="ti ti-report-medical"
+                                aria-hidden="true"
+                              />
+                              Diagnoses
+                            </div>
+                          </div>
+                          {(currentEncounter?.diagnoses || []).map((d) => (
+                            <p
+                              key={d.id}
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-primary)",
+                                padding: "0 4px",
+                              }}
+                            >
+                              <strong>{d.label}</strong>
+                              {d.description ? ` — ${d.description}` : ""}
+                            </p>
+                          ))}
+                          <form
+                            onSubmit={handleAddDiagnosis}
+                            style={{
+                              padding: "8px 4px 4px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                            }}
+                          >
+                            <input
+                              type="text"
+                              className="modal-input"
+                              maxLength={255}
+                              placeholder="Diagnosis label"
+                              value={diagnosisLabel}
+                              onChange={(e) =>
+                                setDiagnosisLabel(e.target.value)
+                              }
+                            />
+                            <input
+                              type="text"
+                              className="modal-input"
+                              maxLength={2000}
+                              placeholder="Description (optional)"
+                              value={diagnosisDescription}
+                              onChange={(e) =>
+                                setDiagnosisDescription(e.target.value)
+                              }
+                            />
+                            {diagnosisError && (
+                              <div
+                                style={{ fontSize: 12, color: "var(--red)" }}
+                              >
+                                {diagnosisError}
+                              </div>
+                            )}
+                            <button
+                              type="submit"
+                              className="btn-outline"
+                              disabled={
+                                diagnosisSaving || !diagnosisLabel.trim()
+                              }
+                            >
+                              {diagnosisSaving ? "Adding…" : "Add Diagnosis"}
+                            </button>
+                          </form>
+                        </div>
+
+                        {/* Prescription */}
+                        <div className="ws-card">
+                          <div className="ws-card-header">
+                            <div className="ws-card-title">
+                              <i className="ti ti-pill" aria-hidden="true" />
+                              Prescription
+                            </div>
+                          </div>
+                          {(currentEncounter?.prescription?.items || []).map(
+                            (item) => (
+                              <p
+                                key={item.id}
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--text-primary)",
+                                  padding: "0 4px",
+                                }}
+                              >
+                                {item.drug}
+                                {item.dosage ? ` — ${item.dosage}` : ""}
+                                {item.frequency ? `, ${item.frequency}` : ""}
+                                {item.duration ? ` for ${item.duration}` : ""}
+                              </p>
+                            ),
+                          )}
+                          <form
+                            onSubmit={handleAddPrescriptionItem}
+                            style={{
+                              padding: "8px 4px 4px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                            }}
+                          >
+                            <input
+                              type="text"
+                              className="modal-input"
+                              maxLength={150}
+                              placeholder="Drug name"
+                              value={rxForm.drug_name}
+                              onChange={(e) =>
+                                setRxForm((f) => ({
+                                  ...f,
+                                  drug_name: e.target.value,
+                                }))
+                              }
+                            />
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: 8,
+                              }}
+                            >
+                              <input
+                                type="text"
+                                className="modal-input"
+                                maxLength={255}
+                                placeholder="Dosage (e.g. 500mg)"
+                                value={rxForm.dosage}
+                                onChange={(e) =>
+                                  setRxForm((f) => ({
+                                    ...f,
+                                    dosage: e.target.value,
+                                  }))
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="modal-input"
+                                maxLength={255}
+                                placeholder="Frequency (e.g. twice daily)"
+                                value={rxForm.frequency}
+                                onChange={(e) =>
+                                  setRxForm((f) => ({
+                                    ...f,
+                                    frequency: e.target.value,
+                                  }))
+                                }
+                              />
+                              <input
+                                type="text"
+                                className="modal-input"
+                                maxLength={255}
+                                placeholder="Duration (e.g. 7 days)"
+                                value={rxForm.duration}
+                                onChange={(e) =>
+                                  setRxForm((f) => ({
+                                    ...f,
+                                    duration: e.target.value,
+                                  }))
+                                }
+                              />
+                              <select
+                                className="modal-select"
+                                value={rxForm.route}
+                                onChange={(e) =>
+                                  setRxForm((f) => ({
+                                    ...f,
+                                    route: e.target.value,
+                                  }))
+                                }
+                              >
+                                <option value="">Route (optional)</option>
+                                {[
+                                  "oral",
+                                  "iv",
+                                  "im",
+                                  "subcutaneous",
+                                  "inhalation",
+                                  "topical",
+                                  "rectal",
+                                  "nasal",
+                                  "ophthalmic",
+                                  "otic",
+                                  "transdermal",
+                                ].map((r) => (
+                                  <option key={r} value={r}>
+                                    {r}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            {rxError && (
+                              <div
+                                style={{ fontSize: 12, color: "var(--red)" }}
+                              >
+                                {rxError}
+                              </div>
+                            )}
+                            <button
+                              type="submit"
+                              className="btn-outline"
+                              disabled={rxSaving || !rxForm.drug_name.trim()}
+                            >
+                              {rxSaving ? "Adding…" : "Add Prescription Item"}
+                            </button>
+                          </form>
+                        </div>
+                      </>
+                    )}
+
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--text-muted)",
+                        letterSpacing: "0.4px",
+                        margin: "20px 4px 8px",
+                      }}
+                    >
+                      PREVIOUS ENCOUNTERS
                     </div>
 
-                    {encounters.length === 0 ? (
+                    {encounters.filter(
+                      (enc) => enc.appointment_id !== activeAppointmentId,
+                    ).length === 0 ? (
                       <div
                         style={{
                           padding: 24,
@@ -331,102 +842,108 @@ export default function MedicalRecordsPage() {
                           fontSize: 13,
                         }}
                       >
-                        No encounters recorded for this patient yet.
+                        No previous encounters for this patient.
                       </div>
                     ) : (
-                      encounters.map((enc) => (
-                        <div className="ws-card" key={enc.id}>
-                          <div className="ws-card-header">
-                            <div className="ws-card-title">
-                              <i
-                                className="ti ti-file-text"
-                                aria-hidden="true"
-                              />
-                              Encounter — {enc.visit_type || "visit"}
+                      encounters
+                        .filter(
+                          (enc) => enc.appointment_id !== activeAppointmentId,
+                        )
+                        .map((enc) => (
+                          <div className="ws-card" key={enc.id}>
+                            <div className="ws-card-header">
+                              <div className="ws-card-title">
+                                <i
+                                  className="ti ti-file-text"
+                                  aria-hidden="true"
+                                />
+                                Encounter — {enc.visit_type || "visit"}
+                              </div>
+                              <span className="ws-card-badge">
+                                {enc.created_at}
+                              </span>
                             </div>
-                            <span className="ws-card-badge">
-                              {enc.created_at}
-                            </span>
+                            {enc.clinical_notes.length > 0 && (
+                              <div style={{ padding: "0 4px 10px" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: "var(--text-muted)",
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  NOTES
+                                </div>
+                                {enc.clinical_notes.map((n) => (
+                                  <p
+                                    key={n.id}
+                                    style={{
+                                      fontSize: 13,
+                                      color: "var(--text-primary)",
+                                    }}
+                                  >
+                                    {n.content}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            {enc.diagnoses.length > 0 && (
+                              <div style={{ padding: "0 4px 10px" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: "var(--text-muted)",
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  DIAGNOSES
+                                </div>
+                                {enc.diagnoses.map((d) => (
+                                  <p
+                                    key={d.id}
+                                    style={{
+                                      fontSize: 13,
+                                      color: "var(--text-primary)",
+                                    }}
+                                  >
+                                    <strong>{d.label}</strong>
+                                    {d.description ? ` — ${d.description}` : ""}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                            {enc.prescription?.items?.length > 0 && (
+                              <div style={{ padding: "0 4px 4px" }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: "var(--text-muted)",
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  PRESCRIPTION
+                                </div>
+                                {enc.prescription.items.map((item) => (
+                                  <p
+                                    key={item.id}
+                                    style={{
+                                      fontSize: 13,
+                                      color: "var(--text-primary)",
+                                    }}
+                                  >
+                                    {item.drug} — {item.dosage} {item.frequency}{" "}
+                                    {item.duration
+                                      ? `for ${item.duration}`
+                                      : ""}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          {enc.clinical_notes.length > 0 && (
-                            <div style={{ padding: "0 4px 10px" }}>
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  color: "var(--text-muted)",
-                                  marginBottom: 4,
-                                }}
-                              >
-                                NOTES
-                              </div>
-                              {enc.clinical_notes.map((n) => (
-                                <p
-                                  key={n.id}
-                                  style={{
-                                    fontSize: 13,
-                                    color: "var(--text-primary)",
-                                  }}
-                                >
-                                  {n.content}
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                          {enc.diagnoses.length > 0 && (
-                            <div style={{ padding: "0 4px 10px" }}>
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  color: "var(--text-muted)",
-                                  marginBottom: 4,
-                                }}
-                              >
-                                DIAGNOSES
-                              </div>
-                              {enc.diagnoses.map((d) => (
-                                <p
-                                  key={d.id}
-                                  style={{
-                                    fontSize: 13,
-                                    color: "var(--text-primary)",
-                                  }}
-                                >
-                                  <strong>{d.label}</strong>
-                                  {d.description ? ` — ${d.description}` : ""}
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                          {enc.prescription?.items?.length > 0 && (
-                            <div style={{ padding: "0 4px 4px" }}>
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  color: "var(--text-muted)",
-                                  marginBottom: 4,
-                                }}
-                              >
-                                PRESCRIPTION
-                              </div>
-                              {enc.prescription.items.map((item) => (
-                                <p
-                                  key={item.id}
-                                  style={{
-                                    fontSize: 13,
-                                    color: "var(--text-primary)",
-                                  }}
-                                >
-                                  {item.drug} — {item.dosage} {item.frequency}{" "}
-                                  {item.duration ? `for ${item.duration}` : ""}
-                                </p>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))
+                        ))
                     )}
                   </div>
                 </>

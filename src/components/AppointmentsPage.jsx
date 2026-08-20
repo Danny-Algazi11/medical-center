@@ -21,6 +21,7 @@ import {
 } from "../api/Appointments";
 import { searchDoctorsByClinic, getDoctorAvailability } from "../api/Schedule";
 import { searchPatients } from "../api/Patients";
+import { getPatientProfile } from "../api/MedicalRecords";
 
 // Matches App\Core\Enums\AppointmentStatus exactly.
 const STATUS_META = {
@@ -93,6 +94,156 @@ function availableActions(role, status) {
 }
 
 // ── New appointment / walk-in modal — receptionist only ─────────────
+// ── Patient info modal — opened by clicking a patient in the table,
+// doctor role only ────────────────────────────────────────────────
+function PatientProfileModal({ patientId, onClose }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    getPatientProfile(patientId)
+      .then(setData)
+      .catch((err) => setError(err.message || "Couldn't load patient info."))
+      .finally(() => setLoading(false));
+  }, [patientId]);
+
+  const patient = data?.patient;
+  const encounters = data?.encounters || [];
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal" style={{ maxWidth: 520 }}>
+        <div className="modal-header">
+          <div>
+            <h2>Patient Info</h2>
+            <p>Summary and encounter history with this patient.</p>
+          </div>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <i className="ti ti-x" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div
+          className="modal-form"
+          style={{ padding: "20px 28px", overflowY: "auto" }}
+        >
+          {loading && (
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Loading…</p>
+          )}
+          {!loading && error && (
+            <div className="apt-banner apt-banner-error">{error}</div>
+          )}
+
+          {!loading && !error && patient && (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  marginBottom: 18,
+                }}
+              >
+                <div
+                  className="patient-avatar"
+                  style={{ width: 44, height: 44 }}
+                >
+                  {initialsOf(patient.name)}
+                </div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 600 }}>
+                    {patient.name || "—"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    {patient.age != null ? `${patient.age}Y` : "—"} ·{" "}
+                    {patient.gender || "—"} ·{" "}
+                    {patient.blood_type || "Blood type unknown"}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-muted)",
+                  letterSpacing: "0.4px",
+                  marginBottom: 8,
+                }}
+              >
+                ENCOUNTER HISTORY WITH THIS DOCTOR
+              </div>
+
+              {encounters.length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                  No past encounters between you and this patient yet.
+                </p>
+              ) : (
+                encounters.map((enc) => (
+                  <div
+                    key={enc.id}
+                    style={{
+                      border: "1px solid var(--card-border)",
+                      borderRadius: 9,
+                      padding: 12,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 12,
+                        color: "var(--text-muted)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span>{enc.visit_type || "visit"}</span>
+                      <span>{enc.created_at}</span>
+                    </div>
+                    {enc.clinical_notes?.map((n) => (
+                      <p
+                        key={n.id}
+                        style={{ fontSize: 13, color: "var(--text-primary)" }}
+                      >
+                        {n.content}
+                      </p>
+                    ))}
+                    {enc.diagnoses?.map((d) => (
+                      <p
+                        key={d.id}
+                        style={{ fontSize: 13, color: "var(--text-primary)" }}
+                      >
+                        <strong>{d.label}</strong>
+                        {d.description ? ` — ${d.description}` : ""}
+                      </p>
+                    ))}
+                    {enc.prescription?.items?.map((item) => (
+                      <p
+                        key={item.id}
+                        style={{ fontSize: 13, color: "var(--text-primary)" }}
+                      >
+                        {item.drug}
+                        {item.dosage ? ` — ${item.dosage}` : ""}
+                      </p>
+                    ))}
+                  </div>
+                ))
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NewAppointmentModal({
   clinicId,
   doctorOptions,
@@ -415,6 +566,7 @@ export default function AppointmentsPage() {
   const [cancelError, setCancelError] = useState("");
 
   const [showNewAppointment, setShowNewAppointment] = useState(false);
+  const [patientProfileId, setPatientProfileId] = useState(null);
   const [prefillPatient, setPrefillPatient] = useState(null);
 
   // Arrived here from PatientsPage's "Book Appointment" button (with a
@@ -674,7 +826,19 @@ export default function AppointmentsPage() {
                   return (
                     <tr key={apt.id}>
                       <td>
-                        <div className="patient-cell">
+                        <div
+                          className="patient-cell"
+                          style={
+                            role === "doctor" && apt.patient?.id
+                              ? { cursor: "pointer" }
+                              : undefined
+                          }
+                          onClick={() =>
+                            role === "doctor" &&
+                            apt.patient?.id &&
+                            setPatientProfileId(apt.patient.id)
+                          }
+                        >
                           <div className="patient-avatar">
                             {initialsOf(apt.patient?.name)}
                           </div>
@@ -943,6 +1107,13 @@ export default function AppointmentsPage() {
             setActionNotice("Appointment created.");
             load();
           }}
+        />
+      )}
+
+      {patientProfileId && (
+        <PatientProfileModal
+          patientId={patientProfileId}
+          onClose={() => setPatientProfileId(null)}
         />
       )}
     </div>

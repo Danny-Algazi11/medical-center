@@ -234,6 +234,7 @@
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .ws-card-header {
@@ -455,6 +456,7 @@
   border: 1px solid var(--card-border);
   border-radius: 9px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .record-section-header {
