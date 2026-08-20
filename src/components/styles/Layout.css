@@ -326,6 +326,33 @@
   background: #fff;
 }
 
+.topbar-clinic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: #f9f9f9;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+.topbar-clinic i {
+  color: var(--green);
+  font-size: 15px;
+}
+.topbar-clinic select {
+  border: none;
+  background: none;
+  outline: none;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  max-width: 180px;
+}
+
 .topbar-icons {
   display: flex;
   align-items: center;
@@ -654,6 +681,14 @@
   color: var(--amber);
 }
 .badge-no-show {
+  background: var(--red-light);
+  color: var(--red);
+}
+.badge-in-progress {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+.badge-cancelled {
   background: var(--red-light);
   color: var(--red);
 }

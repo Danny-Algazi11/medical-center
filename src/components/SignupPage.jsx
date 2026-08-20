@@ -62,7 +62,14 @@ function ProgressBar({ step }) {
 }
 
 /* ── Upload field ──────────────────────────────────────── */
-function UploadField({ label, hint, multiple = false, onChange, files = [] }) {
+function UploadField({
+  label,
+  hint,
+  multiple = false,
+  onChange,
+  files = [],
+  accept = "image/*,.pdf",
+}) {
   return (
     <div className="signup-field">
       <label className="signup-label">{label}</label>
@@ -71,7 +78,7 @@ function UploadField({ label, hint, multiple = false, onChange, files = [] }) {
           type="file"
           multiple={multiple}
           onChange={(e) => onChange(Array.from(e.target.files))}
-          accept="image/*,.pdf"
+          accept={accept}
         />
         <div className="signup-upload-icon">
           <i className="ti ti-cloud-upload" aria-hidden="true" />
@@ -339,6 +346,29 @@ export default function SignupPage() {
       }
       if (!profile.consultationFee) {
         setError("Please enter your consultation fee.");
+        return false;
+      }
+      if (!uploads.idPhoto || uploads.idPhoto.length === 0) {
+        setError("Please upload your ID card photo.");
+        return false;
+      }
+      if (!uploads.personalPhoto || uploads.personalPhoto.length === 0) {
+        setError("Please upload a personal photo.");
+        return false;
+      }
+      if (!uploads.license || uploads.license.length === 0) {
+        setError("Please upload your doctor license.");
+        return false;
+      }
+      if (!uploads.certificates || uploads.certificates.length === 0) {
+        setError("Please upload at least one certificate.");
+        return false;
+      }
+      if (
+        doctorPath === "create" &&
+        (!uploads.clinicLicense || uploads.clinicLicense.length === 0)
+      ) {
+        setError("Please upload the clinic's license file.");
         return false;
       }
     }
@@ -1089,9 +1119,10 @@ export default function SignupPage() {
                         />
                         <UploadField
                           label="Personal photo"
-                          hint="Image · Max 5MB"
+                          hint="Image only (JPG/PNG) · Max 5MB"
                           files={uploads.personalPhoto}
                           onChange={(f) => setUpload("personalPhoto", f)}
+                          accept="image/jpeg,image/png,image/jpg"
                         />
                       </div>
 

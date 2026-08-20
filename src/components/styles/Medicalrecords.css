@@ -100,6 +100,18 @@
   background: var(--amber-light);
   color: var(--amber);
 }
+.queue-status-dot.checked_in {
+  background: var(--amber-light);
+  color: var(--amber);
+}
+.queue-status-dot.in_progress {
+  background: var(--green-light);
+  color: var(--green);
+}
+.queue-status-dot.completed {
+  background: #f0f0f0;
+  color: #888;
+}
 
 .queue-item-sub {
   font-size: 12px;

@@ -1,505 +1,698 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import "./styles/Layout.css";
-import "./styles/MedicalRecords.css";
-
-/* ── Mock data ─────────────────────────────────────────── */
-const CURRENT_USER = {
-  name: "Dr. Ahmad",
-  role: "Doctor Portal",
-  initials: "DA",
-};
-
-const TABS = [
-  { to: "/dashboard", label: "Doctor Portal" },
-  { to: "/reception", label: "Reception" },
-  { to: "/analytics", label: "Analytics" },
-];
-
-const QUEUE = [
-  {
-    id: 1,
-    name: "Elena Rodriguez",
-    initials: "ER",
-    time: "10:00 AM • Follow-up",
-    wait: "Waiting: 12m",
-    status: "active",
-    statusLabel: "ACTIVE",
-    age: 42,
-    gender: "Female",
-    mrn: "MRN-48291",
-    blood: "B+",
-    conditions: ["Type 2 Diabetes", "Hypertension"],
-    allergies: [
-      { label: "CRITICAL ALLERGY", type: "critical" },
-      { label: "Penicillin Allergy", type: "normal" },
-    ],
-    conditionTags: ["Type 2 Diabetes", "Hypertension"],
-    prescriptions: [
-      {
-        name: "Metformin HCL 500mg",
-        dosage: "500mg",
-        frequency: "BID with meals",
-        duration: "90 Days",
-      },
-      {
-        name: "Lisinopril 10mg",
-        dosage: "10mg",
-        frequency: "Once daily",
-        duration: "30 Days",
-      },
-    ],
-    record: {
-      conditions: ["Type 2 Diabetes", "Hypertension"],
-      allergies: ["Penicillin (Hives)"],
-      surgeries: [{ name: "Appendectomy", year: "2015" }],
-      family: [{ name: "Heart Disease", relation: "Father" }],
-    },
-  },
-  {
-    id: 2,
-    name: "Marcus Thorne",
-    initials: "MT",
-    time: "10:30 AM • Hypertension",
-    wait: "Waiting: 5m",
-    status: "waiting",
-    statusLabel: "WAITING",
-    age: 55,
-    gender: "Male",
-    mrn: "MRN-33120",
-    blood: "A+",
-    conditions: ["Hypertension"],
-    allergies: [],
-    conditionTags: ["Hypertension"],
-    prescriptions: [
-      {
-        name: "Amlodipine 5mg",
-        dosage: "5mg",
-        frequency: "Once daily",
-        duration: "60 Days",
-      },
-    ],
-    record: {
-      conditions: ["Hypertension"],
-      allergies: ["None known"],
-      surgeries: [],
-      family: [{ name: "Stroke", relation: "Mother" }],
-    },
-  },
-];
+import "./styles/Medicalrecords.css";
+import "./styles/Appointments.css";
+import { useClinic } from "../context/ClinicContext";
+import { getDoctorAppointments } from "../api/Appointments";
+import { getAppointmentMedicalRecord } from "../api/MedicalRecords";
 
 const RECORD_TABS = [
   "Medical History",
   "Medications",
   "Attachments",
-  "Last Encounter",
+  "Encounters",
 ];
 
-/* ── Main page ─────────────────────────────────────────── */
-export default function MedicalRecordsPage() {
-  const [queueTab, setQueueTab] = useState("Checked-in");
-  const [activeId, setActiveId] = useState(1);
-  const [recordTab, setRecordTab] = useState("Medical History");
-  const [diagnosis, setDiagnosis] = useState("");
-  const [notes, setNotes] = useState("");
+function initialsOf(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] || "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return `${first}${last}`.toUpperCase() || "?";
+}
 
-  const patient = QUEUE.find((q) => q.id === activeId) || QUEUE[0];
+function formatSlotTime(slot) {
+  if (!slot?.starts_at) return "Walk-in";
+  const d = new Date(slot.starts_at);
+  if (Number.isNaN(d.getTime())) return slot.starts_at;
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function MedicalRecordsPage() {
+  const { selectedClinicId } = useClinic();
+
+  const [queueTab, setQueueTab] = useState("active"); // "active" | "completed"
+  const [queue, setQueue] = useState([]);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueError, setQueueError] = useState("");
+
+  const [activeAppointmentId, setActiveAppointmentId] = useState(null);
+  const [recordTab, setRecordTab] = useState("Medical History");
+
+  const [recordData, setRecordData] = useState(null); // { access_level, patient, medical_record }
+  const [recordLoading, setRecordLoading] = useState(false);
+  const [recordError, setRecordError] = useState("");
+
+  // Load the queue — "active" merges checked_in + in_progress (the two
+  // states AccessGuard grants full access for); "completed" intentionally
+  // included even though AccessGuard denies access to completed
+  // appointments, so that denial is visible rather than hidden.
+  // Same as AppointmentsPage: doctor appointments have no clinic_id
+  // filter server-side, so the selected clinic is applied client-side.
+  useEffect(() => {
+    setQueueLoading(true);
+    setQueueError("");
+    setActiveAppointmentId(null);
+    setRecordData(null);
+
+    const loaders =
+      queueTab === "active"
+        ? [
+            getDoctorAppointments({ status: "checked_in" }),
+            getDoctorAppointments({ status: "in_progress" }),
+          ]
+        : [getDoctorAppointments({ status: "completed" })];
+
+    Promise.all(loaders)
+      .then((results) => {
+        let merged = results.flatMap((r) => r.items);
+        if (selectedClinicId) {
+          merged = merged.filter((a) => a.clinic?.id === selectedClinicId);
+        }
+        merged.sort((a, b) => {
+          const ta = a.slot?.starts_at
+            ? new Date(a.slot.starts_at).getTime()
+            : 0;
+          const tb = b.slot?.starts_at
+            ? new Date(b.slot.starts_at).getTime()
+            : 0;
+          return ta - tb;
+        });
+        setQueue(merged);
+        if (merged.length > 0) setActiveAppointmentId(merged[0].id);
+      })
+      .catch((err) =>
+        setQueueError(err.message || "Couldn't load appointment queue."),
+      )
+      .finally(() => setQueueLoading(false));
+  }, [queueTab, selectedClinicId]);
+
+  // Load the medical record for whichever appointment is selected.
+  useEffect(() => {
+    if (!activeAppointmentId) return;
+    setRecordLoading(true);
+    setRecordError("");
+    setRecordData(null);
+    getAppointmentMedicalRecord(activeAppointmentId)
+      .then(setRecordData)
+      .catch((err) =>
+        setRecordError(
+          err.message ||
+            "You do not currently have access to this patient's medical record.",
+        ),
+      )
+      .finally(() => setRecordLoading(false));
+  }, [activeAppointmentId]);
+
+  const patient = recordData?.patient;
+  const record = recordData?.medical_record;
+  const allergies = record?.medical_history?.allergies || [];
+  const conditions = record?.medical_history?.chronic_conditions || [];
+  const surgeries = record?.medical_history?.surgeries || [];
+  const family = record?.medical_history?.family_history || [];
+  const medications = record?.medications || [];
+  const attachments = record?.attachments || [];
+  const encounters = record?.encounters || [];
 
   return (
     <div className="layout-shell">
-      <Sidebar user={CURRENT_USER} />
-
+      <Sidebar />
       <div className="layout-main">
-        <Topbar
-          user={CURRENT_USER}
-          tabs={TABS}
-          searchPlaceholder="Search patients..."
-        />
+        <Topbar searchPlaceholder="Search patients..." />
 
-        <div className="medrecords-layout">
-          {/* ── Queue panel ── */}
-          <div className="queue-panel">
-            <div className="queue-toggle">
-              {["Checked-in", "Completed"].map((t) => (
+        <main className="page-content">
+          <div className="medrecords-layout">
+            {/* ── Queue panel ── */}
+            <div className="queue-panel">
+              <div className="queue-toggle">
                 <button
-                  key={t}
-                  className={`queue-toggle-btn${queueTab === t ? " active" : ""}`}
-                  onClick={() => setQueueTab(t)}
+                  className={`queue-toggle-btn${queueTab === "active" ? " active" : ""}`}
+                  onClick={() => setQueueTab("active")}
                 >
-                  {t}
+                  Checked-in
                 </button>
-              ))}
-            </div>
-
-            <div className="queue-list">
-              {QUEUE.map((q) => (
-                <div
-                  key={q.id}
-                  className={`queue-item${activeId === q.id ? " active" : ""}`}
-                  onClick={() => setActiveId(q.id)}
+                <button
+                  className={`queue-toggle-btn${queueTab === "completed" ? " active" : ""}`}
+                  onClick={() => setQueueTab("completed")}
                 >
-                  <div className="queue-item-top">
-                    <span className="queue-item-name">{q.name}</span>
-                    <span className={`queue-status-dot ${q.status}`}>
-                      {q.statusLabel}
-                    </span>
-                  </div>
-                  <div className="queue-item-sub">{q.time}</div>
-                  <div className="queue-item-wait">
-                    <i className="ti ti-clock" aria-hidden="true" />
-                    {q.wait}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Workspace ── */}
-          <div className="workspace-panel">
-            {/* Patient banner */}
-            <div className="patient-banner">
-              <div className="banner-avatar">{patient.initials}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <h2 className="banner-name">{patient.name}</h2>
-                  {patient.allergies.map((a) => (
-                    <span key={a.label} className={`allergy-tag ${a.type}`}>
-                      {a.label}
-                    </span>
-                  ))}
-                </div>
-                <div className="banner-meta">
-                  <span>{patient.age}Y</span>
-                  <span className="banner-sep">•</span>
-                  <span>{patient.gender}</span>
-                  <span className="banner-sep">•</span>
-                  <span>{patient.mrn}</span>
-                  <span className="banner-sep">•</span>
-                  <span
-                    style={{ display: "flex", alignItems: "center", gap: 4 }}
-                  >
-                    <i
-                      className="ti ti-droplet"
-                      style={{ fontSize: 13, color: "var(--red)" }}
-                      aria-hidden="true"
-                    />
-                    {patient.blood}
-                  </span>
-                </div>
+                  Completed
+                </button>
               </div>
-              <div className="banner-tags">
-                {patient.conditionTags.map((c) => (
-                  <span key={c} className="condition-tag">
-                    {c}
-                  </span>
+
+              {queueError && (
+                <p
+                  style={{
+                    padding: "0 16px",
+                    fontSize: 13,
+                    color: "var(--red)",
+                  }}
+                >
+                  {queueError}
+                </p>
+              )}
+
+              <div className="queue-list">
+                {queueLoading && (
+                  <p
+                    style={{
+                      padding: 16,
+                      fontSize: 13,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    Loading…
+                  </p>
+                )}
+                {!queueLoading && queue.length === 0 && (
+                  <p
+                    style={{
+                      padding: 16,
+                      fontSize: 13,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {queueTab === "active"
+                      ? "No checked-in or in-progress patients right now."
+                      : "No completed appointments found."}
+                  </p>
+                )}
+                {queue.map((apt) => (
+                  <div
+                    key={apt.id}
+                    className={`queue-item${activeAppointmentId === apt.id ? " active" : ""}`}
+                    onClick={() => setActiveAppointmentId(apt.id)}
+                  >
+                    <div className="queue-item-top">
+                      <span className="queue-item-name">
+                        {apt.patient?.name || "—"}
+                      </span>
+                      <span className={`queue-status-dot ${apt.status}`}>
+                        {apt.status.replace("_", " ").toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="queue-item-sub">
+                      {formatSlotTime(apt.slot)}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
 
-            {/* Scrollable workspace */}
-            <div className="workspace-scroll">
-              {/* Clinical Diagnosis */}
-              <div className="ws-card">
-                <div className="ws-card-header">
-                  <div className="ws-card-title">
-                    <i className="ti ti-stethoscope" aria-hidden="true" />
-                    Clinical Diagnosis
+            {/* ── Workspace ── */}
+            <div className="workspace-panel">
+              {recordLoading && (
+                <p style={{ padding: 24, color: "var(--text-muted)" }}>
+                  Loading medical record…
+                </p>
+              )}
+
+              {!recordLoading && recordError && (
+                <div style={{ padding: 24 }}>
+                  <div className="apt-banner apt-banner-error">
+                    {recordError}
                   </div>
-                  <span className="ws-card-badge">ICD-10 INTEGRATED</span>
+                  <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    Access to a patient's record is only granted while an
+                    appointment is checked-in or in progress, or starting 48
+                    hours before a scheduled visit — never once it's completed,
+                    cancelled, or marked no-show.
+                  </p>
                 </div>
-                <textarea
-                  className="diagnosis-area"
-                  placeholder="Start typing diagnosis or clinical impression..."
-                  value={diagnosis}
-                  onChange={(e) => setDiagnosis(e.target.value)}
-                />
-                <div className="diagnosis-footer">
-                  <button className="ws-icon-btn" aria-label="Voice input">
-                    <i className="ti ti-microphone" aria-hidden="true" />
-                  </button>
-                  <button className="ws-icon-btn" aria-label="AI assist">
-                    <i className="ti ti-sparkles" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
+              )}
 
-              {/* Prescription Plan */}
-              <div className="ws-card">
-                <div className="ws-card-header">
-                  <div className="ws-card-title">
-                    <i className="ti ti-pill" aria-hidden="true" />
-                    Prescription Plan
-                  </div>
-                  <button
-                    className="btn-dark"
-                    style={{ padding: "7px 14px", fontSize: 13 }}
-                  >
-                    <i className="ti ti-plus" aria-hidden="true" />
-                    Add Medication
-                  </button>
-                </div>
-                <table className="rx-table">
-                  <thead>
-                    <tr>
-                      <th>Medicine Name</th>
-                      <th>Dosage</th>
-                      <th>Frequency</th>
-                      <th>Duration</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {patient.prescriptions.map((rx, i) => (
-                      <tr key={i}>
-                        <td>
-                          <span className="rx-name">{rx.name}</span>
-                        </td>
-                        <td style={{ color: "var(--text-secondary)" }}>
-                          {rx.dosage}
-                        </td>
-                        <td style={{ color: "var(--text-secondary)" }}>
-                          {rx.frequency}
-                        </td>
-                        <td style={{ color: "var(--text-secondary)" }}>
-                          {rx.duration}
-                        </td>
-                        <td>
-                          <button className="ws-icon-btn" aria-label="Remove">
-                            <i className="ti ti-trash" aria-hidden="true" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Clinical Notes */}
-              <div className="ws-card">
-                <div className="ws-card-header">
-                  <div className="ws-card-title">
-                    <i className="ti ti-notes" aria-hidden="true" />
-                    Clinical Consultation Notes
-                  </div>
-                </div>
-                <textarea
-                  className="notes-area"
-                  placeholder="Detailed notes regarding the consultation, patient observations, and future care plan..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Footer actions */}
-            <div className="workspace-footer">
-              <button className="btn-ghost">Discard Encounter</button>
-              <button className="btn-outline">
-                <i className="ti ti-device-floppy" aria-hidden="true" />
-                Save Draft
-              </button>
-              <button className="btn-outline">
-                <i className="ti ti-file-invoice" aria-hidden="true" />
-                Generate Rx
-              </button>
-              <button className="btn-dark">
-                <i className="ti ti-circle-check" aria-hidden="true" />
-                Complete Encounter
-              </button>
-            </div>
-          </div>
-
-          {/* ── Record sidebar ── */}
-          <div className="record-panel">
-            <div className="record-panel-header">
-              <span className="record-panel-title">Medical Record</span>
-              <button className="ws-icon-btn" aria-label="More options">
-                <i className="ti ti-dots" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="record-tabs">
-              {RECORD_TABS.map((t) => (
-                <button
-                  key={t}
-                  className={`record-tab${recordTab === t ? " active" : ""}`}
-                  onClick={() => setRecordTab(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            <div className="record-scroll">
-              {recordTab === "Medical History" && (
+              {!recordLoading && !recordError && patient && (
                 <>
-                  {/* Chronic Conditions */}
-                  <div className="record-section">
-                    <div className="record-section-header">
-                      <i
-                        className="ti ti-heart-rate-monitor teal"
-                        aria-hidden="true"
-                      />
-                      Chronic Conditions
+                  <div className="patient-banner">
+                    <div className="banner-avatar">
+                      {initialsOf(patient.name)}
                     </div>
-                    <div className="record-section-body">
-                      {patient.record.conditions.map((c) => (
-                        <div key={c} className="record-item">
-                          {c}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Allergies */}
-                  <div className="record-section">
-                    <div className="record-section-header">
-                      <i
-                        className="ti ti-alert-triangle red"
-                        aria-hidden="true"
-                      />
-                      Allergies
-                    </div>
-                    <div className="record-section-body">
-                      {patient.record.allergies.map((a) => (
-                        <div key={a} className="record-item allergy">
-                          {a}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Surgeries */}
-                  <div className="record-section">
-                    <div className="record-section-header">
-                      <i
-                        className="ti ti-surgical-staple green"
-                        aria-hidden="true"
-                      />
-                      Surgeries
-                    </div>
-                    <div className="record-section-body">
-                      {patient.record.surgeries.length === 0 ? (
-                        <div
-                          style={{ fontSize: 13, color: "var(--text-muted)" }}
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <h2 className="banner-name">{patient.name}</h2>
+                        {allergies.map((a) => (
+                          <span
+                            key={a.id}
+                            className={`allergy-tag ${a.severity === "severe" ? "critical" : "normal"}`}
+                          >
+                            {a.allergen}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="banner-meta">
+                        <span>
+                          {patient.age != null ? `${patient.age}Y` : "—"}
+                        </span>
+                        <span className="banner-sep">•</span>
+                        <span>{patient.gender || "—"}</span>
+                        <span className="banner-sep">•</span>
+                        <span
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
                         >
-                          None recorded
-                        </div>
-                      ) : (
-                        patient.record.surgeries.map((s) => (
-                          <div key={s.name} className="record-row">
-                            <div className="record-item">{s.name}</div>
-                            <div className="record-year">{s.year}</div>
-                          </div>
-                        ))
-                      )}
+                          <i
+                            className="ti ti-droplet"
+                            style={{ fontSize: 13, color: "var(--red)" }}
+                            aria-hidden="true"
+                          />
+                          {patient.blood_type || "—"}
+                        </span>
+                        <span className="banner-sep">•</span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            textTransform: "uppercase",
+                            fontWeight: 600,
+                            color:
+                              recordData.access_level === "full"
+                                ? "var(--green)"
+                                : "var(--amber)",
+                          }}
+                        >
+                          {recordData.access_level === "full"
+                            ? "Full access"
+                            : "Read-only access"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="banner-tags">
+                      {conditions.map((c) => (
+                        <span key={c.id} className="condition-tag">
+                          {c.condition_name}
+                        </span>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Family History */}
-                  <div className="record-section">
-                    <div className="record-section-header">
-                      <i className="ti ti-users amber" aria-hidden="true" />
-                      Family History
-                    </div>
-                    <div className="record-section-body">
-                      {patient.record.family.map((f) => (
-                        <div key={f.name} className="record-row">
-                          <div className="record-item">{f.name}</div>
-                          <div className="record-year">{f.relation}</div>
+                  <div className="workspace-scroll">
+                    <div className="ws-card">
+                      <div className="ws-card-header">
+                        <div className="ws-card-title">
+                          <i className="ti ti-stethoscope" aria-hidden="true" />
+                          Clinical Documentation
                         </div>
-                      ))}
+                        <span className="ws-card-badge">READ-ONLY FOR NOW</span>
+                      </div>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "var(--text-muted)",
+                          padding: "0 4px 4px",
+                        }}
+                      >
+                        Adding notes, diagnoses, or prescriptions during a visit
+                        isn't available yet — it's blocked by a backend bug, not
+                        a missing feature here. Existing encounters for this
+                        patient are shown below.
+                      </p>
                     </div>
+
+                    {encounters.length === 0 ? (
+                      <div
+                        style={{
+                          padding: 24,
+                          textAlign: "center",
+                          color: "var(--text-muted)",
+                          fontSize: 13,
+                        }}
+                      >
+                        No encounters recorded for this patient yet.
+                      </div>
+                    ) : (
+                      encounters.map((enc) => (
+                        <div className="ws-card" key={enc.id}>
+                          <div className="ws-card-header">
+                            <div className="ws-card-title">
+                              <i
+                                className="ti ti-file-text"
+                                aria-hidden="true"
+                              />
+                              Encounter — {enc.visit_type || "visit"}
+                            </div>
+                            <span className="ws-card-badge">
+                              {enc.created_at}
+                            </span>
+                          </div>
+                          {enc.clinical_notes.length > 0 && (
+                            <div style={{ padding: "0 4px 10px" }}>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "var(--text-muted)",
+                                  marginBottom: 4,
+                                }}
+                              >
+                                NOTES
+                              </div>
+                              {enc.clinical_notes.map((n) => (
+                                <p
+                                  key={n.id}
+                                  style={{
+                                    fontSize: 13,
+                                    color: "var(--text-primary)",
+                                  }}
+                                >
+                                  {n.content}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {enc.diagnoses.length > 0 && (
+                            <div style={{ padding: "0 4px 10px" }}>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "var(--text-muted)",
+                                  marginBottom: 4,
+                                }}
+                              >
+                                DIAGNOSES
+                              </div>
+                              {enc.diagnoses.map((d) => (
+                                <p
+                                  key={d.id}
+                                  style={{
+                                    fontSize: 13,
+                                    color: "var(--text-primary)",
+                                  }}
+                                >
+                                  <strong>{d.label}</strong>
+                                  {d.description ? ` — ${d.description}` : ""}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {enc.prescription?.items?.length > 0 && (
+                            <div style={{ padding: "0 4px 4px" }}>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "var(--text-muted)",
+                                  marginBottom: 4,
+                                }}
+                              >
+                                PRESCRIPTION
+                              </div>
+                              {enc.prescription.items.map((item) => (
+                                <p
+                                  key={item.id}
+                                  style={{
+                                    fontSize: 13,
+                                    color: "var(--text-primary)",
+                                  }}
+                                >
+                                  {item.drug} — {item.dosage} {item.frequency}{" "}
+                                  {item.duration ? `for ${item.duration}` : ""}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </>
               )}
 
-              {recordTab === "Medications" && (
-                <div className="record-section">
-                  <div className="record-section-header">
-                    <i className="ti ti-pill teal" aria-hidden="true" />
-                    Current Medications
-                  </div>
-                  <div className="record-section-body">
-                    {patient.prescriptions.map((rx) => (
-                      <div key={rx.name} style={{ marginBottom: 10 }}>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "var(--text-primary)",
-                          }}
-                        >
-                          {rx.name}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--text-muted)",
-                            fontWeight: 300,
-                          }}
-                        >
-                          {rx.dosage} • {rx.frequency} • {rx.duration}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {recordTab === "Attachments" && (
-                <div
-                  style={{
-                    padding: 16,
-                    textAlign: "center",
-                    color: "var(--text-muted)",
-                    fontSize: 14,
-                  }}
-                >
-                  <i
-                    className="ti ti-paperclip"
-                    style={{ fontSize: 32, display: "block", marginBottom: 8 }}
-                    aria-hidden="true"
-                  />
-                  No attachments yet
-                </div>
-              )}
-
-              {recordTab === "Last Encounter" && (
-                <div className="record-section">
-                  <div className="record-section-header">
-                    <i className="ti ti-file-text teal" aria-hidden="true" />
-                    Last Encounter
-                  </div>
-                  <div className="record-section-body">
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--text-muted)",
-                        marginBottom: 6,
-                      }}
-                    >
-                      Oct 12, 2023 • Dr. Ahmad
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "var(--text-primary)",
-                        lineHeight: 1.6,
-                        fontWeight: 300,
-                      }}
-                    >
-                      Patient presented for follow-up. Blood pressure slightly
-                      elevated at 138/88. Medication compliance confirmed.
-                      Dietary advice given. Follow-up in 4 weeks.
-                    </div>
-                  </div>
+              {!recordLoading && !recordError && !patient && (
+                <div style={{ padding: 24, color: "var(--text-muted)" }}>
+                  Select a patient from the queue on the left.
                 </div>
               )}
             </div>
+
+            {/* ── Record sidebar ── */}
+            {patient && (
+              <div className="record-panel">
+                <div className="record-panel-header">
+                  <span className="record-panel-title">Medical Record</span>
+                </div>
+
+                <div className="record-tabs">
+                  {RECORD_TABS.map((t) => (
+                    <button
+                      key={t}
+                      className={`record-tab${recordTab === t ? " active" : ""}`}
+                      onClick={() => setRecordTab(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="record-scroll">
+                  {recordTab === "Medical History" && (
+                    <>
+                      <div className="record-section">
+                        <div className="record-section-header">
+                          <i
+                            className="ti ti-heart-rate-monitor teal"
+                            aria-hidden="true"
+                          />
+                          Chronic Conditions
+                        </div>
+                        <div className="record-section-body">
+                          {conditions.length === 0 ? (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              None recorded
+                            </div>
+                          ) : (
+                            conditions.map((c) => (
+                              <div key={c.id} className="record-item">
+                                {c.condition_name}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="record-section">
+                        <div className="record-section-header">
+                          <i
+                            className="ti ti-alert-triangle red"
+                            aria-hidden="true"
+                          />
+                          Allergies
+                        </div>
+                        <div className="record-section-body">
+                          {allergies.length === 0 ? (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              None known
+                            </div>
+                          ) : (
+                            allergies.map((a) => (
+                              <div key={a.id} className="record-item allergy">
+                                {a.allergen}
+                                {a.reaction ? ` (${a.reaction})` : ""}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="record-section">
+                        <div className="record-section-header">
+                          <i
+                            className="ti ti-surgical-staple green"
+                            aria-hidden="true"
+                          />
+                          Surgeries
+                        </div>
+                        <div className="record-section-body">
+                          {surgeries.length === 0 ? (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              None recorded
+                            </div>
+                          ) : (
+                            surgeries.map((s) => (
+                              <div key={s.id} className="record-row">
+                                <div className="record-item">
+                                  {s.surgery_name}
+                                </div>
+                                <div className="record-year">
+                                  {s.surgery_date}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="record-section">
+                        <div className="record-section-header">
+                          <i className="ti ti-users amber" aria-hidden="true" />
+                          Family History
+                        </div>
+                        <div className="record-section-body">
+                          {family.length === 0 ? (
+                            <div
+                              style={{
+                                fontSize: 13,
+                                color: "var(--text-muted)",
+                              }}
+                            >
+                              None recorded
+                            </div>
+                          ) : (
+                            family.map((f) => (
+                              <div key={f.id} className="record-row">
+                                <div className="record-item">{f.condition}</div>
+                                <div className="record-year">{f.relation}</div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {recordTab === "Medications" && (
+                    <div className="record-section">
+                      <div className="record-section-header">
+                        <i className="ti ti-pill teal" aria-hidden="true" />
+                        Medications
+                      </div>
+                      <div className="record-section-body">
+                        {medications.length === 0 ? (
+                          <div
+                            style={{ fontSize: 13, color: "var(--text-muted)" }}
+                          >
+                            None recorded
+                          </div>
+                        ) : (
+                          medications.map((m) => (
+                            <div key={m.id} style={{ marginBottom: 10 }}>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                  color: "var(--text-primary)",
+                                }}
+                              >
+                                {m.drug_name || "Unknown drug"}{" "}
+                                {m.status === "active" ? "" : `(${m.status})`}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "var(--text-muted)",
+                                  fontWeight: 300,
+                                }}
+                              >
+                                {[m.dosage, m.frequency, m.route]
+                                  .filter(Boolean)
+                                  .join(" • ")}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {recordTab === "Attachments" && (
+                    <div className="record-section">
+                      {attachments.length === 0 ? (
+                        <div
+                          style={{
+                            padding: 16,
+                            textAlign: "center",
+                            color: "var(--text-muted)",
+                            fontSize: 14,
+                          }}
+                        >
+                          <i
+                            className="ti ti-paperclip"
+                            style={{
+                              fontSize: 32,
+                              display: "block",
+                              marginBottom: 8,
+                            }}
+                            aria-hidden="true"
+                          />
+                          No attachments yet
+                        </div>
+                      ) : (
+                        attachments.map((a) => (
+                          <div key={a.id} className="record-row">
+                            <div className="record-item">
+                              {a.type} ({Math.round((a.file_size || 0) / 1024)}{" "}
+                              KB)
+                            </div>
+                            <div className="record-year">{a.uploaded_at}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {recordTab === "Encounters" && (
+                    <div className="record-section">
+                      <div className="record-section-header">
+                        <i
+                          className="ti ti-file-text teal"
+                          aria-hidden="true"
+                        />
+                        Encounters
+                      </div>
+                      <div className="record-section-body">
+                        {encounters.length === 0 ? (
+                          <div
+                            style={{ fontSize: 13, color: "var(--text-muted)" }}
+                          >
+                            None recorded
+                          </div>
+                        ) : (
+                          encounters.map((e) => (
+                            <div key={e.id} className="record-row">
+                              <div className="record-item">
+                                {e.visit_type || "Visit"}
+                              </div>
+                              <div className="record-year">{e.created_at}</div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
