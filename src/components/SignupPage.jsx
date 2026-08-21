@@ -8,7 +8,18 @@ import {
 } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n/useTranslation";
+import MapPicker from "./MapPicker";
 import "./styles/SignupPage.css";
+
+// axios.js's response interceptor already normalizes errors into a plain
+// Error with .message/.errors/.status — there is no .response here. .errors
+// (when present) is Laravel's { field: [msg, ...] } validation shape, which
+// is more specific than the generic top-level .message ("The given data was
+// invalid."), so prefer the first field error when one exists.
+function errorMessage(err, fallback) {
+  const firstFieldError = err?.errors && Object.values(err.errors)[0]?.[0];
+  return firstFieldError || err?.message || fallback;
+}
 
 /* ── Departments with IDs sent to API ──────────────────── */
 const DEPARTMENTS = [
@@ -198,6 +209,8 @@ export default function SignupPage() {
     clinicName: "",
     clinicAddress: "",
     clinicPhone: "",
+    latitude: null,
+    longitude: null,
   });
 
   // Step 2 — uploads
@@ -385,14 +398,11 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const result = await registerDoctor(basic, role);
-      console.log("REGISTER RESPONSE:", result);
+      await registerDoctor(basic, role);
       setStep(1);
       setError("");
     } catch (err) {
-      console.log("REGISTER ERROR:", err.response?.data);
-      console.error("Registration error:", err);
-      setError(err.response?.data?.message || "Registration failed.");
+      setError(errorMessage(err, "Registration failed."));
     } finally {
       setLoading(false);
     }
@@ -408,9 +418,7 @@ export default function SignupPage() {
       setStep(2); // move to complete profile
       setError("");
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Invalid code. Please try again.",
-      );
+      setError(errorMessage(err, "Invalid code. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -439,7 +447,7 @@ export default function SignupPage() {
       await refreshUser();
       navigate("/reception", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Profile completion failed.");
+      setError(errorMessage(err, "Profile completion failed."));
     } finally {
       setLoading(false);
     }
@@ -513,7 +521,7 @@ export default function SignupPage() {
             </svg>
           </div>
           <div>
-            <div className="signup-logo-name">MediCenter</div>
+            <div className="signup-logo-name">MediZone</div>
             <div className="signup-logo-sub">{t("auth.healthPortal")}</div>
           </div>
         </div>
@@ -532,7 +540,7 @@ export default function SignupPage() {
         </div>
 
         <p className="signup-tagline">
-          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
+          © {new Date().getFullYear()} MediZone. {t("landing.rightsReserved")}
         </p>
       </aside>
 
@@ -1059,6 +1067,25 @@ export default function SignupPage() {
                           value={profile.clinicPhone}
                           onChange={handleProfileChange}
                           required
+                        />
+                      </div>
+                      <div className="signup-field">
+                        <label className="signup-label">
+                          {t("signup.clinicLocation")}
+                        </label>
+                        <div className="signup-map-hint">
+                          {t("signup.clinicLocationHint")}
+                        </div>
+                        <MapPicker
+                          latitude={profile.latitude}
+                          longitude={profile.longitude}
+                          onChange={(lat, lng) =>
+                            setProfile((p) => ({
+                              ...p,
+                              latitude: lat,
+                              longitude: lng,
+                            }))
+                          }
                         />
                       </div>
                     </>

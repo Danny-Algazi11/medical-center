@@ -466,6 +466,19 @@
   font-weight: 300;
 }
 
+.signup-map-hint {
+  font-size: 11px;
+  color: var(--tm);
+  font-weight: 300;
+  margin-bottom: 8px;
+}
+
+.signup-map-picker {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .signup-upload-files {
   display: flex;
   flex-wrap: wrap;

@@ -54,19 +54,14 @@ export const registerDoctor = async (basic, role) => {
   // at all for receptionists. Must be exactly 10 characters.
   if (role === "reception") payload.clinic_code = basic.clinicCode;
 
-  try {
-    const response = await api.post("/auth/register", payload);
+  const response = await api.post("/auth/register", payload);
 
-    const token = response.data.data?.token;
-    if (token) {
-      localStorage.setItem("token", token);
-    }
-
-    return response.data.data;
-  } catch (error) {
-    console.log("REGISTER ERROR RESPONSE:", error.response);
-    throw error;
+  const token = response.data.data?.token;
+  if (token) {
+    localStorage.setItem("token", token);
   }
+
+  return response.data.data;
 };
 
 // COMPLETE PROFILE
@@ -114,6 +109,8 @@ export const completeDoctorProfile = async (
       form.append("clinic_name", profile.clinicName);
       form.append("clinic_address", profile.clinicAddress);
       if (profile.clinicPhone) form.append("clinic_phone", profile.clinicPhone);
+      if (profile.latitude != null) form.append("latitude", profile.latitude);
+      if (profile.longitude != null) form.append("longitude", profile.longitude);
     }
 
     if (uploads.idPhoto?.length) form.append("id_card", uploads.idPhoto[0]);
@@ -149,19 +146,14 @@ export const completeDoctorProfile = async (
 
 // VERIFY EMAIL CODE
 export const verifyEmailCode = async (code) => {
-  try {
-    const response = await api.post("/auth/email/verify-code", { code });
+  const response = await api.post("/auth/email/verify-code", { code });
 
-    const token = response.data.data?.token || response.data.token;
-    if (token) {
-      localStorage.setItem("token", token);
-    }
-
-    return response.data;
-  } catch (error) {
-    console.log("VERIFY ERROR RESPONSE:", error.response);
-    throw error;
+  const token = response.data.data?.token || response.data.token;
+  if (token) {
+    localStorage.setItem("token", token);
   }
+
+  return response.data;
 };
 
 // RESEND VERIFICATION CODE

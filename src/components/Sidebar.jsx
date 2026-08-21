@@ -77,8 +77,8 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Logo */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-name">St. Jude Medical</div>
-        <div className="sidebar-logo-sub">City Central Branch</div>
+        <div className="sidebar-logo-name">MediZone</div>
+        <div className="sidebar-logo-sub">{t("auth.healthPortal")}</div>
       </div>
 
       {/* New Appointment */}

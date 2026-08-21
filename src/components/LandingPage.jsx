@@ -41,7 +41,7 @@ export default function LandingPage() {
               <path d="m15 18-2-2" />
             </svg>
           </div>
-          <span className="lp-logo-name">MediCenter</span>
+          <span className="lp-logo-name">MediZone</span>
         </Link>
 
         <div className="lp-nav-links">
@@ -135,7 +135,7 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="lp-footer">
         <span>
-          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
+          © {new Date().getFullYear()} MediZone. {t("landing.rightsReserved")}
         </span>
         <div className="lp-footer-links">
           <a href="#">{t("landing.privacyPolicy")}</a>

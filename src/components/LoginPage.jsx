@@ -92,7 +92,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <div>
-            <div className="auth-logo-name">MediCenter</div>
+            <div className="auth-logo-name">MediZone</div>
             <div className="auth-logo-sub">{t("auth.healthPortal")}</div>
           </div>
         </div>
@@ -115,7 +115,7 @@ export default function LoginPage() {
         </div>
 
         <p className="auth-tagline">
-          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
+          © {new Date().getFullYear()} MediZone. {t("landing.rightsReserved")}
         </p>
       </aside>
 

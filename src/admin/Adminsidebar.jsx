@@ -54,7 +54,7 @@ export default function AdminSidebar() {
     <aside className="adm-sidebar">
       {/* Logo */}
       <div className="adm-logo">
-        <div className="adm-logo-name">MediCenter</div>
+        <div className="adm-logo-name">MediZone</div>
         <div className="adm-logo-sub">Admin Portal</div>
         <div className="adm-logo-badge">{t("admin.portalBadge")}</div>
       </div>
