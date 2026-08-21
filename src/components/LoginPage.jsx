@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Auth.css";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { t } = useTranslation();
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
@@ -22,7 +24,7 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.email || !form.password) {
-      setError("Please fill in all fields.");
+      setError(t("auth.fillAllFields"));
       return;
     }
     setLoading(true);
@@ -61,7 +63,7 @@ export default function LoginPage() {
         return;
       }
 
-      setError(message || "Login failed. Please try again.");
+      setError(message || t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -91,27 +93,19 @@ export default function LoginPage() {
           </div>
           <div>
             <div className="auth-logo-name">MediCenter</div>
-            <div className="auth-logo-sub">Health Portal</div>
+            <div className="auth-logo-sub">{t("auth.healthPortal")}</div>
           </div>
         </div>
 
         <div className="auth-hero">
           <h2>
-            Your health,
+            {t("auth.heroTitleLine1")}
             <br />
-            <em>well managed.</em>
+            <em>{t("auth.heroTitleEm")}</em>
           </h2>
-          <p>
-            Securely access your appointments, records, and care team — all in
-            one place.
-          </p>
+          <p>{t("auth.heroP")}</p>
           <div className="auth-features">
-            {[
-              "Book & manage appointments",
-              "View lab results & prescriptions",
-              "Message your care team",
-              "Secure & HIPAA compliant",
-            ].map((f) => (
+            {[t("auth.f1"), t("auth.f2"), t("auth.f3"), t("auth.f4")].map((f) => (
               <div className="auth-feature" key={f}>
                 <div className="auth-feature-dot" />
                 {f}
@@ -121,7 +115,7 @@ export default function LoginPage() {
         </div>
 
         <p className="auth-tagline">
-          © {new Date().getFullYear()} MediCenter. All rights reserved.
+          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
         </p>
       </aside>
 
@@ -129,10 +123,10 @@ export default function LoginPage() {
       <main className="auth-panel-right">
         <nav className="auth-tabs" aria-label="Auth navigation">
           <Link to="/login" className="auth-tab active">
-            Log in
+            {t("auth.login")}
           </Link>
           <Link to="/signup" className="auth-tab">
-            Create account
+            {t("auth.createAccount")}
           </Link>
         </nav>
 
@@ -145,7 +139,7 @@ export default function LoginPage() {
 
           <div className="auth-field">
             <label className="auth-label" htmlFor="email">
-              Email address
+              {t("auth.emailAddress")}
             </label>
             <input
               id="email"
@@ -162,7 +156,7 @@ export default function LoginPage() {
 
           <div className="auth-field">
             <label className="auth-label" htmlFor="password">
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -178,16 +172,16 @@ export default function LoginPage() {
           </div>
 
           <div className="auth-forgot">
-            <Link to="/forgot-password">Forgot password?</Link>
+            <Link to="/forgot-password">{t("auth.forgotPassword")}</Link>
           </div>
 
           <button type="submit" className="auth-btn" disabled={loading}>
-            {loading ? "Signing in…" : "Log in to your account"}
+            {loading ? t("auth.signingIn") : t("auth.loginButton")}
           </button>
 
           <div className="auth-divider">
             <div className="auth-divider-line" />
-            <span>or continue with</span>
+            <span>{t("auth.orContinueWith")}</span>
             <div className="auth-divider-line" />
           </div>
 
@@ -216,7 +210,7 @@ export default function LoginPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Google
+              {t("auth.google")}
             </button>
             <button type="button" className="auth-oauth-btn">
               <svg
@@ -231,12 +225,12 @@ export default function LoginPage() {
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
-              Hospital SSO
+              {t("auth.hospitalSSO")}
             </button>
           </div>
 
           <p className="auth-switch">
-            No account? <Link to="/signup">Create one →</Link>
+            {t("auth.noAccount")} <Link to="/signup">{t("auth.createOne")}</Link>
           </p>
         </form>
       </main>

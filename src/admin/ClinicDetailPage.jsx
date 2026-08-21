@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
 import DocumentCard from "./DocumentCard";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   getClinics,
   getDoctors,
@@ -23,14 +24,14 @@ function getStatusColor(status) {
   return map[status] || "gray";
 }
 
-function getStatusLabel(status) {
+function getStatusLabel(status, t) {
   const map = {
-    pending: "Pending",
-    active: "Active",
-    rejected: "Rejected",
-    suspended: "Suspended",
+    pending: t("adminCommon.pending"),
+    active: t("adminCommon.active"),
+    rejected: t("adminCommon.rejected"),
+    suspended: t("adminCommon.suspended"),
   };
-  return map[status] || "Unknown";
+  return map[status] || status;
 }
 
 function formatDate(value) {
@@ -48,6 +49,7 @@ export default function ClinicDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Instant render if we arrived via the Link in ClinicManagement.jsx
   // (state.clinic is the raw admin/clinics record for this row).
@@ -160,7 +162,7 @@ export default function ClinicDetailPage() {
     <div className="adm-shell">
       <AdminSidebar />
       <div className="adm-main">
-        <AdminTopbar title="Clinic Profile" searchPlaceholder="Search clinics..." />
+        <AdminTopbar title={t("clinicDetail.title")} searchPlaceholder={t("adminCommon.searchClinics")} />
         <div className="adm-content">
           <div style={{ marginBottom: 14 }}>
             <button
@@ -169,7 +171,7 @@ export default function ClinicDetailPage() {
               className="adm-btn adm-btn-outline"
               style={{ padding: "6px 12px", fontSize: 12 }}
             >
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back to clinics
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t("clinicDetail.backToClinics")}
             </button>
           </div>
 
@@ -191,7 +193,7 @@ export default function ClinicDetailPage() {
 
           {loading && (
             <div style={{ textAlign: "center", padding: "40px" }}>
-              <p>Loading clinic profile...</p>
+              <p>{t("clinicDetail.loadingProfile")}</p>
             </div>
           )}
 
@@ -204,10 +206,10 @@ export default function ClinicDetailPage() {
                     <i className="ti ti-building-hospital" aria-hidden="true" />
                     {clinic.name}
                     <span className={`adm-badge adm-badge-${getStatusColor(status)}`}>
-                      {getStatusLabel(status)}
+                      {getStatusLabel(status, t)}
                     </span>
                   </h1>
-                  <p>{clinic.address || "No address on file"}</p>
+                  <p>{clinic.address || t("clinicDetail.noAddress")}</p>
                 </div>
                 <div className="adm-header-actions">
                   {status === "pending" && (
@@ -217,14 +219,14 @@ export default function ClinicDetailPage() {
                         onClick={handleApprove}
                         disabled={actionLoading}
                       >
-                        {actionLoading ? "..." : "Approve"}
+                        {actionLoading ? "..." : t("clinicDetail.approve")}
                       </button>
                       <button
                         className="adm-btn adm-btn-red"
                         onClick={handleReject}
                         disabled={actionLoading}
                       >
-                        {actionLoading ? "..." : "Reject"}
+                        {actionLoading ? "..." : t("clinicDetail.reject")}
                       </button>
                     </>
                   )}
@@ -234,7 +236,7 @@ export default function ClinicDetailPage() {
                       onClick={handleSuspend}
                       disabled={actionLoading}
                     >
-                      {actionLoading ? "..." : "Suspend"}
+                      {actionLoading ? "..." : t("clinicDetail.suspend")}
                     </button>
                   )}
                   {status === "suspended" && (
@@ -243,12 +245,12 @@ export default function ClinicDetailPage() {
                       onClick={handleReactivate}
                       disabled={actionLoading}
                     >
-                      {actionLoading ? "..." : "Reactivate"}
+                      {actionLoading ? "..." : t("clinicDetail.reactivate")}
                     </button>
                   )}
                   {status === "rejected" && (
                     <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                      No actions available for rejected clinics
+                      {t("clinicDetail.noActionsRejected")}
                     </span>
                   )}
                 </div>
@@ -258,23 +260,23 @@ export default function ClinicDetailPage() {
               <div className="adm-grid-2 adm-section-gap">
                 <div className="adm-card">
                   <div className="adm-card-header">
-                    <h2 className="adm-card-title">Clinic information</h2>
+                    <h2 className="adm-card-title">{t("clinicDetail.clinicInformation")}</h2>
                   </div>
                   <div style={{ padding: "4px 18px 18px" }}>
                     {[
-                      ["Phone", clinic.phone || "N/A"],
-                      ["Email", clinic.email || "N/A"],
-                      ["Address", clinic.address || "N/A"],
+                      [t("clinicDetail.phone"), clinic.phone || "N/A"],
+                      [t("clinicDetail.email"), clinic.email || "N/A"],
+                      [t("clinicDetail.address"), clinic.address || "N/A"],
                       [
-                        "Coordinates",
+                        t("clinicDetail.coordinates"),
                         clinic.latitude && clinic.longitude
                           ? `${clinic.latitude}, ${clinic.longitude}`
                           : "N/A",
                       ],
-                      ["Owner", clinic.owner?.name || "—"],
-                      ["Owner email", clinic.owner?.email || "—"],
-                      ["Review notes", clinic.review_notes || "None"],
-                      ["Registered on", formatDate(clinic.created_at)],
+                      [t("clinicDetail.owner"), clinic.owner?.name || "—"],
+                      [t("clinicDetail.ownerEmail"), clinic.owner?.email || "—"],
+                      [t("clinicDetail.reviewNotes"), clinic.review_notes || t("clinicDetail.none")],
+                      [t("clinicDetail.registeredOn"), formatDate(clinic.created_at)],
                     ].map(([label, value]) => (
                       <div
                         key={label}
@@ -298,7 +300,7 @@ export default function ClinicDetailPage() {
 
                 <div className="adm-card">
                   <div className="adm-card-header">
-                    <h2 className="adm-card-title">Departments</h2>
+                    <h2 className="adm-card-title">{t("clinicDetail.departments")}</h2>
                   </div>
                   <div style={{ padding: "4px 18px 18px", display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {clinic.departments && clinic.departments.length > 0 ? (
@@ -309,7 +311,7 @@ export default function ClinicDetailPage() {
                       ))
                     ) : (
                       <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                        No departments linked
+                        {t("clinicDetail.noDepartments")}
                       </span>
                     )}
                   </div>
@@ -319,7 +321,7 @@ export default function ClinicDetailPage() {
               {/* License document */}
               <div className="adm-card adm-section-gap">
                 <div className="adm-card-header">
-                  <h2 className="adm-card-title">Submitted documents</h2>
+                  <h2 className="adm-card-title">{t("clinicDetail.submittedDocuments")}</h2>
                 </div>
                 <div
                   style={{
@@ -330,7 +332,7 @@ export default function ClinicDetailPage() {
                   }}
                 >
                   <DocumentCard
-                    label="Business / operating license"
+                    label={t("clinicDetail.businessLicense")}
                     url={clinic.license_url}
                     icon="ti-file-certificate"
                   />
@@ -341,7 +343,7 @@ export default function ClinicDetailPage() {
               <div className="adm-card adm-section-gap">
                 <div className="adm-card-header">
                   <h2 className="adm-card-title">
-                    Documents uploaded by {clinic.owner?.name || "the creating doctor"}
+                    {t("clinicDetail.documentsByOwner")} {clinic.owner?.name || t("clinicDetail.theCreatingDoctor")}
                   </h2>
                   {ownerDoctor && (
                     <Link
@@ -349,7 +351,7 @@ export default function ClinicDetailPage() {
                       state={{ doctor: ownerDoctor }}
                       className="adm-card-link"
                     >
-                      View doctor profile →
+                      {t("clinicDetail.viewDoctorProfile")}
                     </Link>
                   )}
                 </div>
@@ -363,40 +365,40 @@ export default function ClinicDetailPage() {
                 >
                   {ownerDoctorLoading && (
                     <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                      Loading doctor documents...
+                      {t("clinicDetail.loadingDoctorDocs")}
                     </span>
                   )}
                   {!ownerDoctorLoading && !clinic.owner && (
                     <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                      This clinic has no owner on file.
+                      {t("clinicDetail.noOwnerOnFile")}
                     </span>
                   )}
                   {!ownerDoctorLoading && clinic.owner && !ownerDoctor && (
                     <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                      No matching doctor record found for {clinic.owner.email}.
+                      {t("clinicDetail.noMatchingDoctor")} {clinic.owner.email}.
                     </span>
                   )}
                   {!ownerDoctorLoading && ownerDoctor && (
                     <>
                       <DocumentCard
-                        label="Photo"
+                        label={t("doctorDetail.photo")}
                         url={ownerDoctor.documents?.photo_url}
                         icon="ti-user-circle"
                       />
                       <DocumentCard
-                        label="Medical license"
+                        label={t("clinicDetail.medicalLicense")}
                         url={ownerDoctor.documents?.license_file_url}
                         icon="ti-file-certificate"
                       />
                       <DocumentCard
-                        label="ID card"
+                        label={t("clinicDetail.idCard")}
                         url={ownerDoctor.documents?.id_card_url}
                         icon="ti-id"
                       />
                       {(ownerDoctor.documents?.certificate_urls || []).map((url, i) => (
                         <DocumentCard
                           key={url + i}
-                          label={`Certificate ${i + 1}`}
+                          label={`${t("clinicDetail.certificate")} ${i + 1}`}
                           url={url}
                           icon="ti-certificate"
                         />
@@ -410,9 +412,9 @@ export default function ClinicDetailPage() {
 
           {!loading && !clinic && !error && (
             <div className="adm-card" style={{ padding: 40, textAlign: "center" }}>
-              <p>Clinic not found.</p>
+              <p>{t("clinicDetail.notFound")}</p>
               <Link to="/admin/clinics" className="adm-card-link">
-                ← Back to clinic list
+                {t("clinicDetail.backToClinicList")}
               </Link>
             </div>
           )}

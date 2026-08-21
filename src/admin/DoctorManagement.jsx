@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   getDoctors,
   approveDoctor,
@@ -35,6 +36,7 @@ const MODAL_INIT = {
 
 export default function DoctorManagement() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -254,27 +256,24 @@ export default function DoctorManagement() {
       <AdminSidebar />
       <div className="adm-main">
         <AdminTopbar
-          title="Doctor Management"
-          searchPlaceholder="Search doctors..."
+          title={t("admin.doctorManagement")}
+          searchPlaceholder={t("adminCommon.searchDoctors")}
         />
         <div className="adm-content">
           <div className="adm-page-header">
             <div className="adm-page-header-left">
-              <h1>Doctor management</h1>
-              <p>
-                Add, edit, verify, suspend, or deactivate doctor accounts and
-                manage clinic assignments.
-              </p>
+              <h1>{t("doctorManagement.title")}</h1>
+              <p>{t("doctorManagement.subtitle")}</p>
             </div>
             <div className="adm-header-actions">
               <button className="adm-btn adm-btn-outline">
-                <i className="ti ti-download" aria-hidden="true" /> Export
+                <i className="ti ti-download" aria-hidden="true" /> {t("adminCommon.export")}
               </button>
               <button
                 className="adm-btn adm-btn-dark"
                 onClick={() => setShowModal(true)}
               >
-                <i className="ti ti-plus" aria-hidden="true" /> Add doctor
+                <i className="ti ti-plus" aria-hidden="true" /> {t("doctorManagement.addDoctor")}
               </button>
             </div>
           </div>
@@ -299,7 +298,7 @@ export default function DoctorManagement() {
           {/* Loading state */}
           {loading && (
             <div style={{ textAlign: "center", padding: "40px" }}>
-              <p>Loading doctors...</p>
+              <p>{t("doctorManagement.loadingDoctors")}</p>
             </div>
           )}
 
@@ -316,22 +315,22 @@ export default function DoctorManagement() {
               >
                 {[
                   {
-                    label: "Total",
+                    label: t("adminCommon.total"),
                     num: doctors.length,
                     color: "var(--adm-text-primary)",
                   },
                   {
-                    label: "Active",
+                    label: t("adminCommon.active"),
                     num: doctors.filter((d) => d.sLabel === "Active").length,
                     color: "var(--adm-green)",
                   },
                   {
-                    label: "Pending",
+                    label: t("adminCommon.pending"),
                     num: doctors.filter((d) => d.sLabel === "Pending").length,
                     color: "var(--adm-amber)",
                   },
                   {
-                    label: "Suspended",
+                    label: t("adminCommon.suspended"),
                     num: doctors.filter((d) => d.sLabel === "Suspended")
                       .length,
                     color: "var(--adm-red)",
@@ -339,7 +338,7 @@ export default function DoctorManagement() {
                 ].map((s) => (
                   <div className="adm-stat-card" key={s.label}>
                     <div>
-                      <div className="adm-stat-label">{s.label} doctors</div>
+                      <div className="adm-stat-label">{s.label} {t("doctorManagement.totalDoctors")}</div>
                       <div className="adm-stat-num" style={{ color: s.color }}>
                         {s.num}
                       </div>
@@ -350,27 +349,31 @@ export default function DoctorManagement() {
 
               {/* Filter bar */}
               <div className="adm-filter-bar">
-                {["All", "Active", "Pending", "Suspended", "Inactive"].map(
-                  (f) => (
-                    <button
-                      key={f}
-                      className={`adm-btn ${filter === f ? "adm-btn-dark" : "adm-btn-outline"}`}
-                      style={{ padding: "6px 14px", fontSize: 12 }}
-                      onClick={() => setFilter(f)}
-                    >
-                      {f}
-                    </button>
-                  ),
-                )}
+                {[
+                  { key: "All", label: t("adminCommon.all") },
+                  { key: "Active", label: t("adminCommon.active") },
+                  { key: "Pending", label: t("adminCommon.pending") },
+                  { key: "Suspended", label: t("adminCommon.suspended") },
+                  { key: "Inactive", label: t("doctorManagement.inactive") },
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    className={`adm-btn ${filter === f.key ? "adm-btn-dark" : "adm-btn-outline"}`}
+                    style={{ padding: "6px 14px", fontSize: 12 }}
+                    onClick={() => setFilter(f.key)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
                 <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
                   <select className="adm-filter-select">
-                    <option>All specialties</option>
+                    <option>{t("doctorManagement.allSpecialties")}</option>
                     {SPECIALTIES.map((s) => (
                       <option key={s}>{s}</option>
                     ))}
                   </select>
                   <select className="adm-filter-select">
-                    <option>All clinics</option>
+                    <option>{t("doctorManagement.allClinics")}</option>
                     {CLINICS.map((c) => (
                       <option key={c}>{c}</option>
                     ))}
@@ -383,13 +386,13 @@ export default function DoctorManagement() {
                 <table className="adm-table">
                   <thead>
                     <tr>
-                      <th>Doctor</th>
-                      <th>Specialty</th>
-                      <th>Clinic</th>
-                      <th>Contact</th>
-                      <th>Status</th>
-                      <th>Verified</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
+                      <th>{t("doctorManagement.doctor")}</th>
+                      <th>{t("doctorManagement.specialty")}</th>
+                      <th>{t("doctorManagement.clinic")}</th>
+                      <th>{t("doctorManagement.contact")}</th>
+                      <th>{t("doctorManagement.status")}</th>
+                      <th>{t("doctorManagement.verifiedCol")}</th>
+                      <th style={{ textAlign: "right" }}>{t("doctorManagement.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -447,7 +450,7 @@ export default function DoctorManagement() {
                                   style={{ fontSize: 11 }}
                                   aria-hidden="true"
                                 />{" "}
-                                Verified
+                                {t("adminCommon.verified")}
                               </span>
                             ) : (
                               <button
@@ -456,7 +459,7 @@ export default function DoctorManagement() {
                                 onClick={() => handleApprove(d.id)}
                                 disabled={actionLoading === d.id}
                               >
-                                {actionLoading === d.id ? "..." : "Approve"}
+                                {actionLoading === d.id ? "..." : t("adminCommon.approve")}
                               </button>
                             )}
                           </td>
@@ -477,7 +480,7 @@ export default function DoctorManagement() {
                                     onClick={() => handleApprove(d.id)}
                                     disabled={actionLoading === d.id}
                                   >
-                                    {actionLoading === d.id ? "..." : "Approve"}
+                                    {actionLoading === d.id ? "..." : t("adminCommon.approve")}
                                   </button>
                                   <button
                                     className="adm-btn adm-btn-red"
@@ -485,7 +488,7 @@ export default function DoctorManagement() {
                                     onClick={() => handleReject(d.id)}
                                     disabled={actionLoading === d.id}
                                   >
-                                    {actionLoading === d.id ? "..." : "Reject"}
+                                    {actionLoading === d.id ? "..." : t("adminCommon.reject")}
                                   </button>
                                 </>
                               )}
@@ -496,7 +499,7 @@ export default function DoctorManagement() {
                                   onClick={() => handleSuspend(d.id)}
                                   disabled={actionLoading === d.id}
                                 >
-                                  {actionLoading === d.id ? "..." : "Suspend"}
+                                  {actionLoading === d.id ? "..." : t("adminCommon.suspend")}
                                 </button>
                               )}
                               {d.sLabel === "Suspended" && (
@@ -508,7 +511,7 @@ export default function DoctorManagement() {
                                 >
                                   {actionLoading === d.id
                                     ? "..."
-                                    : "Reactivate"}
+                                    : t("adminCommon.reactivate")}
                                 </button>
                               )}
                             </div>
@@ -518,7 +521,7 @@ export default function DoctorManagement() {
                     ) : (
                       <tr>
                         <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
-                          No doctors found
+                          {t("doctorManagement.noDoctorsFound")}
                         </td>
                       </tr>
                     )}
@@ -526,7 +529,7 @@ export default function DoctorManagement() {
                 </table>
                 <div className="adm-table-footer">
                   <span>
-                    Showing {filtered.length} of {doctors.length} doctors
+                    {t("doctorManagement.showing")} {filtered.length} {t("doctorManagement.of")} {doctors.length} {t("doctorManagement.totalDoctors")}
                   </span>
                   <div className="adm-pagination">
                     <button className="adm-page-btn">
@@ -554,11 +557,8 @@ export default function DoctorManagement() {
           <div className="adm-modal">
             <div className="adm-modal-header">
               <div>
-                <h2>Add new doctor</h2>
-                <p>
-                  Fill in the doctor's details. Note: Actual doctor registration
-                  happens through the signup flow. This is for manual admin entry.
-                </p>
+                <h2>{t("doctorManagement.addNewDoctor")}</h2>
+                <p>{t("doctorManagement.addDoctorDesc")}</p>
               </div>
               <button
                 className="adm-icon-btn"
@@ -578,7 +578,7 @@ export default function DoctorManagement() {
                   }}
                 >
                   <div className="adm-field">
-                    <label className="adm-label">First name</label>
+                    <label className="adm-label">{t("doctorManagement.firstName")}</label>
                     <input
                       className="adm-input"
                       name="firstName"
@@ -589,7 +589,7 @@ export default function DoctorManagement() {
                     />
                   </div>
                   <div className="adm-field">
-                    <label className="adm-label">Last name</label>
+                    <label className="adm-label">{t("doctorManagement.lastName")}</label>
                     <input
                       className="adm-input"
                       name="lastName"
@@ -601,7 +601,7 @@ export default function DoctorManagement() {
                   </div>
                 </div>
                 <div className="adm-field">
-                  <label className="adm-label">Email address</label>
+                  <label className="adm-label">{t("doctorManagement.emailAddress")}</label>
                   <input
                     className="adm-input"
                     name="email"
@@ -620,7 +620,7 @@ export default function DoctorManagement() {
                   }}
                 >
                   <div className="adm-field">
-                    <label className="adm-label">Phone</label>
+                    <label className="adm-label">{t("doctorManagement.phone")}</label>
                     <input
                       className="adm-input"
                       name="phone"
@@ -630,7 +630,7 @@ export default function DoctorManagement() {
                     />
                   </div>
                   <div className="adm-field">
-                    <label className="adm-label">License number</label>
+                    <label className="adm-label">{t("doctorManagement.licenseNumber")}</label>
                     <input
                       className="adm-input"
                       name="licenseNo"
@@ -648,7 +648,7 @@ export default function DoctorManagement() {
                   }}
                 >
                   <div className="adm-field">
-                    <label className="adm-label">Specialty</label>
+                    <label className="adm-label">{t("doctorManagement.specialty")}</label>
                     <select
                       className="adm-select"
                       name="specialty"
@@ -656,14 +656,14 @@ export default function DoctorManagement() {
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Select specialty</option>
+                      <option value="">{t("doctorManagement.selectSpecialty")}</option>
                       {SPECIALTIES.map((s) => (
                         <option key={s}>{s}</option>
                       ))}
                     </select>
                   </div>
                   <div className="adm-field">
-                    <label className="adm-label">Assign to clinic</label>
+                    <label className="adm-label">{t("doctorManagement.assignToClinic")}</label>
                     <select
                       className="adm-select"
                       name="clinic"
@@ -671,7 +671,7 @@ export default function DoctorManagement() {
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Select clinic</option>
+                      <option value="">{t("doctorManagement.selectClinic")}</option>
                       {CLINICS.map((c) => (
                         <option key={c}>{c}</option>
                       ))}
@@ -679,7 +679,7 @@ export default function DoctorManagement() {
                   </div>
                 </div>
                 <div className="adm-field">
-                  <label className="adm-label">Notes (optional)</label>
+                  <label className="adm-label">{t("doctorManagement.notesOptional")}</label>
                   <textarea
                     className="adm-textarea"
                     name="notes"
@@ -695,10 +695,10 @@ export default function DoctorManagement() {
                   className="adm-btn adm-btn-outline"
                   onClick={() => setShowModal(false)}
                 >
-                  Cancel
+                  {t("adminCommon.cancel")}
                 </button>
                 <button type="submit" className="adm-btn adm-btn-dark">
-                  Add doctor
+                  {t("doctorManagement.addDoctor")}
                 </button>
               </div>
             </form>

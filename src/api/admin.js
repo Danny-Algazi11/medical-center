@@ -103,6 +103,62 @@ export const reactivateDoctor = (id) =>
 
 /*
 |--------------------------------------------------------------------------
+| Doctor Reports / Complaints (Admin) — matches routes in
+| app/Modules/DoctorEngagement/routes.php ("Admin" group)
+|--------------------------------------------------------------------------
+*/
+
+// GET /admin/reports?status=&category=&doctor_id=&per_page=
+export const getReports = (params) => api.get("/admin/reports", { params });
+
+export const markReportUnderReview = (id) =>
+  api.post(`/admin/reports/${id}/review`);
+
+// status: "action_taken" | "resolved" | "dismissed"
+export const resolveReport = (id, data) =>
+  api.post(`/admin/reports/${id}/resolve`, data);
+
+/*
+|--------------------------------------------------------------------------
+| Doctor Reviews / Ratings (Admin) — matches
+| app/Modules/Administration/routes.php ("doctors/{doctorId}/reviews")
+|--------------------------------------------------------------------------
+*/
+
+export const getDoctorReviews = (doctorId, params) =>
+  api.get(`/admin/doctors/${doctorId}/reviews`, { params });
+
+/*
+|--------------------------------------------------------------------------
+| Analytics (Admin) — matches app/Modules/Administration/routes.php
+|--------------------------------------------------------------------------
+*/
+
+export const getAnalyticsDashboard = () => api.get("/admin/analytics/dashboard");
+
+export const getAppointmentStats = (params) =>
+  api.get("/admin/analytics/appointments", { params });
+
+export const getDoctorPerformance = (params) =>
+  api.get("/admin/analytics/doctors/performance", { params });
+
+export const getUserEngagement = (params) =>
+  api.get("/admin/analytics/users/engagement", { params });
+
+export const getReportsSummary = () =>
+  api.get("/admin/analytics/reports/summary");
+
+/*
+|--------------------------------------------------------------------------
+| Audit Logs (Admin) — matches app/Modules/Administration/routes.php
+|--------------------------------------------------------------------------
+*/
+
+// GET /admin/audit-logs?action=&entity_type=&user_id=&from=&to=&per_page=
+export const getAuditLogs = (params) => api.get("/admin/audit-logs", { params });
+
+/*
+|--------------------------------------------------------------------------
 | Public (unauthenticated) reference data — used to populate dropdowns
 | instead of the hardcoded SPECIALTIES / CLINICS arrays in the UI.
 |--------------------------------------------------------------------------
@@ -124,12 +180,16 @@ export const completeProfile = (data) =>
 
 /*
 |--------------------------------------------------------------------------
-| NOTE — Not present anywhere in the Postman collection:
-|   - deleteDoctor / listDoctors (DoctorManagement.jsx currently calls these)
-|   - deleteClinic / activateClinic / deactivateClinic (ClinicManagement.jsx)
-|   - getComplaints (AdminDashboard.jsx)
-| These need either a real backend endpoint or the UI calls need to be
-| swapped for the closest real action (e.g. suspend/reactivate instead
-| of activate/deactivate). See my message for the full breakdown.
+| NOTE — confirmed absent from the backend (checked against the actual
+| Laravel routes in Project1, not just the Postman collection):
+|   - deleteClinic / activateClinic / deactivateClinic — only
+|     approve/reject/suspend/reactivate exist for clinics.
+|   - "Flag" / "Remove" a review — DoctorReview only has patient-owned
+|     submit/delete; there is no admin moderation endpoint for reviews.
+|   - Per-star rating breakdown (5★/4★/.../1★ counts) — reviews summary
+|     only returns { total_reviews, average_rating }, no histogram.
+|   - Revenue, monthly time series, and "appointments by type" — none of
+|     the analytics endpoints expose money or a date-bucketed breakdown;
+|     appointment stats are a single { total, by_status } snapshot.
 |--------------------------------------------------------------------------
 */

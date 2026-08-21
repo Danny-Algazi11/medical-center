@@ -257,3 +257,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Change password form ── */
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  max-width: 360px;
+}
+
+.settings-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.settings-input {
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1.5px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-family: "DM Sans", sans-serif;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--green);
+}
+
+.settings-error-text {
+  font-size: 12px;
+  color: var(--red);
+  margin: -6px 0 12px;
+}
+
+[data-theme="dark"] .settings-option-card {
+  background: var(--card-bg);
+}
+
+[data-theme="dark"] .settings-preview {
+  background: #202127;
+  border-color: var(--card-border);
+}

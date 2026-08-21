@@ -5,20 +5,40 @@ import "./styles/Layout.css";
 import "./styles/Medicalrecords.css";
 import "./styles/Appointments.css";
 import { useClinic } from "../context/ClinicContext";
+import { useTranslation } from "../i18n/useTranslation";
 import { getDoctorAppointments, startAppointment } from "../api/Appointments";
 import { getAppointmentMedicalRecord } from "../api/MedicalRecords";
-import {
-  getEncounter,
-  addClinicalNote,
-  addDiagnosis,
-  addPrescriptionItem,
-} from "../api/Encounters";
+import { getEncounter, submitEncounter } from "../api/Encounters";
+
+const EMPTY_RX = {
+  drug_name: "",
+  form: "",
+  dosage: "",
+  frequency: "",
+  duration: "",
+  route: "",
+  notes: "",
+};
+
+const MEDICATION_ROUTES = [
+  "oral",
+  "iv",
+  "im",
+  "subcutaneous",
+  "inhalation",
+  "topical",
+  "rectal",
+  "nasal",
+  "ophthalmic",
+  "otic",
+  "transdermal",
+];
 
 const RECORD_TABS = [
-  "Medical History",
-  "Medications",
-  "Attachments",
-  "Encounters",
+  { key: "Medical History", labelKey: "medicalRecords.medicalHistory" },
+  { key: "Medications", labelKey: "medicalRecords.medications" },
+  { key: "Attachments", labelKey: "medicalRecords.attachments" },
+  { key: "Encounters", labelKey: "medicalRecords.encounters" },
 ];
 
 function initialsOf(name) {
@@ -29,8 +49,8 @@ function initialsOf(name) {
   return `${first}${last}`.toUpperCase() || "?";
 }
 
-function formatSlotTime(slot) {
-  if (!slot?.starts_at) return "Walk-in";
+function formatSlotTime(slot, walkInLabel) {
+  if (!slot?.starts_at) return walkInLabel;
   const d = new Date(slot.starts_at);
   if (Number.isNaN(d.getTime())) return slot.starts_at;
   return d.toLocaleString(undefined, {
@@ -43,6 +63,7 @@ function formatSlotTime(slot) {
 
 export default function MedicalRecordsPage() {
   const { selectedClinicId } = useClinic();
+  const { t } = useTranslation();
 
   const [queueTab, setQueueTab] = useState("active"); // "active" | "completed"
   const [queue, setQueue] = useState([]);
@@ -65,26 +86,25 @@ export default function MedicalRecordsPage() {
   const [startingConsult, setStartingConsult] = useState(false);
   const [startError, setStartError] = useState("");
 
+  // Notes, diagnoses, and prescription items are staged here locally —
+  // "Add" just pushes onto these arrays, no network call — then a single
+  // "Submit encounter" sends everything together in one POST .../submit
+  // request (SubmitEncounterRequest on the backend takes all three
+  // sections in one payload; using it instead of three separate per-item
+  // requests is what was asked for here).
   const [noteInput, setNoteInput] = useState("");
-  const [noteSaving, setNoteSaving] = useState(false);
-  const [noteError, setNoteError] = useState("");
+  const [draftNotes, setDraftNotes] = useState([]);
 
   const [diagnosisLabel, setDiagnosisLabel] = useState("");
   const [diagnosisDescription, setDiagnosisDescription] = useState("");
-  const [diagnosisSaving, setDiagnosisSaving] = useState(false);
-  const [diagnosisError, setDiagnosisError] = useState("");
+  const [draftDiagnoses, setDraftDiagnoses] = useState([]);
 
-  const [rxForm, setRxForm] = useState({
-    drug_name: "",
-    form: "",
-    dosage: "",
-    frequency: "",
-    duration: "",
-    route: "",
-    notes: "",
-  });
-  const [rxSaving, setRxSaving] = useState(false);
-  const [rxError, setRxError] = useState("");
+  const [rxForm, setRxForm] = useState(EMPTY_RX);
+  const [draftItems, setDraftItems] = useState([]);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
   // Load the queue — "active" merges checked_in + in_progress (the two
   // states AccessGuard grants full access for); "completed" intentionally
@@ -157,15 +177,12 @@ export default function MedicalRecordsPage() {
     setNoteInput("");
     setDiagnosisLabel("");
     setDiagnosisDescription("");
-    setRxForm({
-      drug_name: "",
-      form: "",
-      dosage: "",
-      frequency: "",
-      duration: "",
-      route: "",
-      notes: "",
-    });
+    setRxForm(EMPTY_RX);
+    setDraftNotes([]);
+    setDraftDiagnoses([]);
+    setDraftItems([]);
+    setSubmitError("");
+    setSubmitSuccess("");
     getEncounter(activeAppointmentId)
       .then(setCurrentEncounter)
       .catch((err) =>
@@ -193,109 +210,71 @@ export default function MedicalRecordsPage() {
     }
   }
 
-  async function handleAddNote(e) {
+  function handleAddNote(e) {
     e.preventDefault();
     if (!noteInput.trim()) return;
-    setNoteSaving(true);
-    setNoteError("");
-    try {
-      const note = await addClinicalNote(activeAppointmentId, noteInput.trim());
-      setCurrentEncounter((enc) => ({
-        id: enc?.id ?? note.encounter_id ?? null,
-        appointment_id: activeAppointmentId,
-        visit_type: enc?.visit_type,
-        clinical_notes: [...(enc?.clinical_notes || []), note],
-        diagnoses: enc?.diagnoses || [],
-        prescription: enc?.prescription || null,
-        created_at: enc?.created_at,
-      }));
-      setNoteInput("");
-    } catch (err) {
-      setNoteError(
-        err.errors
-          ? Object.values(err.errors)[0][0]
-          : err.message || "Couldn't add note.",
-      );
-    } finally {
-      setNoteSaving(false);
-    }
+    setDraftNotes((prev) => [...prev, noteInput.trim()]);
+    setNoteInput("");
   }
 
-  async function handleAddDiagnosis(e) {
+  function handleAddDiagnosis(e) {
     e.preventDefault();
     if (!diagnosisLabel.trim()) return;
-    setDiagnosisSaving(true);
-    setDiagnosisError("");
-    try {
-      const diagnosis = await addDiagnosis(activeAppointmentId, {
-        label: diagnosisLabel.trim(),
-        description: diagnosisDescription.trim(),
-      });
-      setCurrentEncounter((enc) => ({
-        id: enc?.id ?? diagnosis.encounter_id ?? null,
-        appointment_id: activeAppointmentId,
-        visit_type: enc?.visit_type,
-        clinical_notes: enc?.clinical_notes || [],
-        diagnoses: [...(enc?.diagnoses || []), diagnosis],
-        prescription: enc?.prescription || null,
-        created_at: enc?.created_at,
-      }));
-      setDiagnosisLabel("");
-      setDiagnosisDescription("");
-    } catch (err) {
-      setDiagnosisError(
-        err.errors
-          ? Object.values(err.errors)[0][0]
-          : err.message || "Couldn't add diagnosis.",
-      );
-    } finally {
-      setDiagnosisSaving(false);
-    }
+    setDraftDiagnoses((prev) => [
+      ...prev,
+      { label: diagnosisLabel.trim(), description: diagnosisDescription.trim() },
+    ]);
+    setDiagnosisLabel("");
+    setDiagnosisDescription("");
   }
 
-  async function handleAddPrescriptionItem(e) {
+  function handleAddPrescriptionItem(e) {
     e.preventDefault();
     if (!rxForm.drug_name.trim()) return;
-    setRxSaving(true);
-    setRxError("");
+    setDraftItems((prev) => [...prev, { ...rxForm, drug_name: rxForm.drug_name.trim() }]);
+    setRxForm(EMPTY_RX);
+  }
+
+  async function handleSubmitEncounter() {
+    if (draftNotes.length === 0 && draftDiagnoses.length === 0 && draftItems.length === 0) {
+      setSubmitError("Add at least one note, diagnosis, or prescription item before submitting.");
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError("");
+    setSubmitSuccess("");
     try {
-      const prescription = await addPrescriptionItem(activeAppointmentId, {
-        drug_name: rxForm.drug_name.trim(),
-        form: rxForm.form || undefined,
-        dosage: rxForm.dosage || undefined,
-        frequency: rxForm.frequency || undefined,
-        duration: rxForm.duration || undefined,
-        route: rxForm.route || undefined,
-        notes: rxForm.notes || undefined,
+      // Everything staged above goes in a single request — the backend's
+      // /submit endpoint takes notes, diagnoses, and prescription_items
+      // together rather than as three separate calls.
+      const encounter = await submitEncounter(activeAppointmentId, {
+        notes: draftNotes.map((content) => ({ content })),
+        diagnoses: draftDiagnoses.map((d) => ({
+          label: d.label,
+          description: d.description || undefined,
+        })),
+        prescription_items: draftItems.map((i) => ({
+          drug_name: i.drug_name,
+          form: i.form || undefined,
+          dosage: i.dosage || undefined,
+          frequency: i.frequency || undefined,
+          duration: i.duration || undefined,
+          route: i.route || undefined,
+          notes: i.notes || undefined,
+        })),
       });
-      // The backend returns the whole prescription (all items so far),
-      // not just the new one — replace wholesale.
-      setCurrentEncounter((enc) => ({
-        id: enc?.id ?? null,
-        appointment_id: activeAppointmentId,
-        visit_type: enc?.visit_type,
-        clinical_notes: enc?.clinical_notes || [],
-        diagnoses: enc?.diagnoses || [],
-        prescription,
-        created_at: enc?.created_at,
-      }));
-      setRxForm({
-        drug_name: "",
-        form: "",
-        dosage: "",
-        frequency: "",
-        duration: "",
-        route: "",
-        notes: "",
-      });
+
+      setCurrentEncounter(encounter);
+      setDraftNotes([]);
+      setDraftDiagnoses([]);
+      setDraftItems([]);
+      setSubmitSuccess(t("medicalRecords.submitSuccess") || "Encounter submitted successfully.");
     } catch (err) {
-      setRxError(
-        err.errors
-          ? Object.values(err.errors)[0][0]
-          : err.message || "Couldn't add prescription item.",
+      setSubmitError(
+        err.errors ? Object.values(err.errors)[0][0] : err.message || "Failed to submit encounter.",
       );
     } finally {
-      setRxSaving(false);
+      setSubmitting(false);
     }
   }
 
@@ -313,7 +292,7 @@ export default function MedicalRecordsPage() {
     <div className="layout-shell">
       <Sidebar />
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search patients..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
 
         <main className="page-content">
           <div className="medrecords-layout">
@@ -324,13 +303,13 @@ export default function MedicalRecordsPage() {
                   className={`queue-toggle-btn${queueTab === "active" ? " active" : ""}`}
                   onClick={() => setQueueTab("active")}
                 >
-                  Checked-in
+                  {t("medicalRecords.checkedIn")}
                 </button>
                 <button
                   className={`queue-toggle-btn${queueTab === "completed" ? " active" : ""}`}
                   onClick={() => setQueueTab("completed")}
                 >
-                  Completed
+                  {t("medicalRecords.completedTab")}
                 </button>
               </div>
 
@@ -355,7 +334,7 @@ export default function MedicalRecordsPage() {
                       color: "var(--text-muted)",
                     }}
                   >
-                    Loading…
+                    {t("doctorDashboard.loading")}
                   </p>
                 )}
                 {!queueLoading && queue.length === 0 && (
@@ -367,8 +346,8 @@ export default function MedicalRecordsPage() {
                     }}
                   >
                     {queueTab === "active"
-                      ? "No checked-in or in-progress patients right now."
-                      : "No completed appointments found."}
+                      ? t("medicalRecords.noActivePatients")
+                      : t("medicalRecords.noCompletedAppointments")}
                   </p>
                 )}
                 {queue.map((apt) => (
@@ -386,7 +365,7 @@ export default function MedicalRecordsPage() {
                       </span>
                     </div>
                     <div className="queue-item-sub">
-                      {formatSlotTime(apt.slot)}
+                      {formatSlotTime(apt.slot, t("appointments.walkIn"))}
                     </div>
                   </div>
                 ))}
@@ -397,7 +376,7 @@ export default function MedicalRecordsPage() {
             <div className="workspace-panel">
               {recordLoading && (
                 <p style={{ padding: 24, color: "var(--text-muted)" }}>
-                  Loading medical record…
+                  {t("medicalRecords.loadingRecord")}
                 </p>
               )}
 
@@ -407,10 +386,7 @@ export default function MedicalRecordsPage() {
                     {recordError}
                   </div>
                   <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                    Access to a patient's record is only granted while an
-                    appointment is checked-in or in progress, or starting 48
-                    hours before a scheduled visit — never once it's completed,
-                    cancelled, or marked no-show.
+                    {t("medicalRecords.accessNote")}
                   </p>
                 </div>
               )}
@@ -473,8 +449,8 @@ export default function MedicalRecordsPage() {
                           }}
                         >
                           {recordData.access_level === "full"
-                            ? "Full access"
-                            : "Read-only access"}
+                            ? t("medicalRecords.fullAccess")
+                            : t("medicalRecords.readOnlyAccess")}
                         </span>
                       </div>
                     </div>
@@ -501,7 +477,7 @@ export default function MedicalRecordsPage() {
 
                     {encounterLoading && (
                       <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                        Loading this visit's documentation…
+                        {t("medicalRecords.loadingDocumentation")}
                       </p>
                     )}
 
@@ -513,7 +489,7 @@ export default function MedicalRecordsPage() {
                               className="ti ti-stethoscope"
                               aria-hidden="true"
                             />
-                            Clinical Documentation
+                            {t("medicalRecords.clinicalDocumentation")}
                           </div>
                         </div>
                         {activeAppointment?.status === "checked_in" ? (
@@ -524,8 +500,7 @@ export default function MedicalRecordsPage() {
                                 color: "var(--text-muted)",
                               }}
                             >
-                              Notes, diagnoses, and prescriptions can only be
-                              added once the consultation is in progress.
+                              {t("medicalRecords.inProgressOnlyNote")}
                             </p>
                             <button
                               className="btn-dark"
@@ -533,8 +508,8 @@ export default function MedicalRecordsPage() {
                               onClick={handleStartConsultation}
                             >
                               {startingConsult
-                                ? "Starting…"
-                                : "Start Consultation"}
+                                ? t("medicalRecords.starting")
+                                : t("medicalRecords.startConsultation")}
                             </button>
                           </div>
                         ) : (
@@ -546,8 +521,8 @@ export default function MedicalRecordsPage() {
                             }}
                           >
                             {activeAppointment
-                              ? "This visit isn't in progress, so documentation isn't available right now."
-                              : "Select a patient from the queue to document a visit."}
+                              ? t("medicalRecords.notInProgressNote")
+                              : t("medicalRecords.selectPatientNote")}
                           </p>
                         )}
                       </div>
@@ -555,12 +530,23 @@ export default function MedicalRecordsPage() {
 
                     {!encounterLoading && canWrite && (
                       <>
+                        {submitError && (
+                          <div className="apt-banner apt-banner-error">
+                            {submitError}
+                          </div>
+                        )}
+                        {submitSuccess && (
+                          <div className="apt-banner apt-banner-success">
+                            {submitSuccess}
+                          </div>
+                        )}
+
                         {/* Notes */}
                         <div className="ws-card">
                           <div className="ws-card-header">
                             <div className="ws-card-title">
                               <i className="ti ti-notes" aria-hidden="true" />
-                              Notes
+                              {t("medicalRecords.notes")}
                             </div>
                           </div>
                           {(currentEncounter?.clinical_notes || []).map((n) => (
@@ -575,6 +561,32 @@ export default function MedicalRecordsPage() {
                               {n.content}
                             </p>
                           ))}
+                          {draftNotes.map((content, i) => (
+                            <div
+                              key={i}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "0 4px" }}
+                            >
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--text-secondary)",
+                                  fontStyle: "italic",
+                                  flex: 1,
+                                  margin: 0,
+                                }}
+                              >
+                                {content}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Remove note"
+                                onClick={() => setDraftNotes((prev) => prev.filter((_, idx) => idx !== i))}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)" }}
+                              >
+                                <i className="ti ti-x" aria-hidden="true" />
+                              </button>
+                            </div>
+                          ))}
                           <form
                             onSubmit={handleAddNote}
                             style={{ padding: "8px 4px 4px" }}
@@ -583,24 +595,17 @@ export default function MedicalRecordsPage() {
                               className="modal-input"
                               rows={2}
                               maxLength={5000}
-                              placeholder="Add a clinical note…"
+                              placeholder={t("medicalRecords.addNotePlaceholder")}
                               value={noteInput}
                               onChange={(e) => setNoteInput(e.target.value)}
                             />
-                            {noteError && (
-                              <div
-                                style={{ fontSize: 12, color: "var(--red)" }}
-                              >
-                                {noteError}
-                              </div>
-                            )}
                             <button
                               type="submit"
                               className="btn-outline"
                               style={{ marginTop: 8 }}
-                              disabled={noteSaving || !noteInput.trim()}
+                              disabled={!noteInput.trim()}
                             >
-                              {noteSaving ? "Adding…" : "Add Note"}
+                              {t("medicalRecords.addNote")}
                             </button>
                           </form>
                         </div>
@@ -613,7 +618,7 @@ export default function MedicalRecordsPage() {
                                 className="ti ti-report-medical"
                                 aria-hidden="true"
                               />
-                              Diagnoses
+                              {t("medicalRecords.diagnoses")}
                             </div>
                           </div>
                           {(currentEncounter?.diagnoses || []).map((d) => (
@@ -629,6 +634,33 @@ export default function MedicalRecordsPage() {
                               {d.description ? ` — ${d.description}` : ""}
                             </p>
                           ))}
+                          {draftDiagnoses.map((d, i) => (
+                            <div
+                              key={i}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "0 4px" }}
+                            >
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--text-secondary)",
+                                  fontStyle: "italic",
+                                  flex: 1,
+                                  margin: 0,
+                                }}
+                              >
+                                <strong>{d.label}</strong>
+                                {d.description ? ` — ${d.description}` : ""}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Remove diagnosis"
+                                onClick={() => setDraftDiagnoses((prev) => prev.filter((_, idx) => idx !== i))}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)" }}
+                              >
+                                <i className="ti ti-x" aria-hidden="true" />
+                              </button>
+                            </div>
+                          ))}
                           <form
                             onSubmit={handleAddDiagnosis}
                             style={{
@@ -642,7 +674,7 @@ export default function MedicalRecordsPage() {
                               type="text"
                               className="modal-input"
                               maxLength={255}
-                              placeholder="Diagnosis label"
+                              placeholder={t("medicalRecords.diagnosisLabel")}
                               value={diagnosisLabel}
                               onChange={(e) =>
                                 setDiagnosisLabel(e.target.value)
@@ -652,27 +684,18 @@ export default function MedicalRecordsPage() {
                               type="text"
                               className="modal-input"
                               maxLength={2000}
-                              placeholder="Description (optional)"
+                              placeholder={t("medicalRecords.descriptionOptional")}
                               value={diagnosisDescription}
                               onChange={(e) =>
                                 setDiagnosisDescription(e.target.value)
                               }
                             />
-                            {diagnosisError && (
-                              <div
-                                style={{ fontSize: 12, color: "var(--red)" }}
-                              >
-                                {diagnosisError}
-                              </div>
-                            )}
                             <button
                               type="submit"
                               className="btn-outline"
-                              disabled={
-                                diagnosisSaving || !diagnosisLabel.trim()
-                              }
+                              disabled={!diagnosisLabel.trim()}
                             >
-                              {diagnosisSaving ? "Adding…" : "Add Diagnosis"}
+                              {t("medicalRecords.addDiagnosis")}
                             </button>
                           </form>
                         </div>
@@ -682,7 +705,7 @@ export default function MedicalRecordsPage() {
                           <div className="ws-card-header">
                             <div className="ws-card-title">
                               <i className="ti ti-pill" aria-hidden="true" />
-                              Prescription
+                              {t("medicalRecords.prescription")}
                             </div>
                           </div>
                           {(currentEncounter?.prescription?.items || []).map(
@@ -702,6 +725,35 @@ export default function MedicalRecordsPage() {
                               </p>
                             ),
                           )}
+                          {draftItems.map((item, i) => (
+                            <div
+                              key={i}
+                              style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "0 4px" }}
+                            >
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  color: "var(--text-secondary)",
+                                  fontStyle: "italic",
+                                  flex: 1,
+                                  margin: 0,
+                                }}
+                              >
+                                {item.drug_name}
+                                {item.dosage ? ` — ${item.dosage}` : ""}
+                                {item.frequency ? `, ${item.frequency}` : ""}
+                                {item.duration ? ` for ${item.duration}` : ""}
+                              </p>
+                              <button
+                                type="button"
+                                aria-label="Remove prescription item"
+                                onClick={() => setDraftItems((prev) => prev.filter((_, idx) => idx !== i))}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)" }}
+                              >
+                                <i className="ti ti-x" aria-hidden="true" />
+                              </button>
+                            </div>
+                          ))}
                           <form
                             onSubmit={handleAddPrescriptionItem}
                             style={{
@@ -715,7 +767,7 @@ export default function MedicalRecordsPage() {
                               type="text"
                               className="modal-input"
                               maxLength={150}
-                              placeholder="Drug name"
+                              placeholder={t("medicalRecords.drugName")}
                               value={rxForm.drug_name}
                               onChange={(e) =>
                                 setRxForm((f) => ({
@@ -735,7 +787,7 @@ export default function MedicalRecordsPage() {
                                 type="text"
                                 className="modal-input"
                                 maxLength={255}
-                                placeholder="Dosage (e.g. 500mg)"
+                                placeholder={t("medicalRecords.dosagePlaceholder")}
                                 value={rxForm.dosage}
                                 onChange={(e) =>
                                   setRxForm((f) => ({
@@ -748,7 +800,7 @@ export default function MedicalRecordsPage() {
                                 type="text"
                                 className="modal-input"
                                 maxLength={255}
-                                placeholder="Frequency (e.g. twice daily)"
+                                placeholder={t("medicalRecords.frequencyPlaceholder")}
                                 value={rxForm.frequency}
                                 onChange={(e) =>
                                   setRxForm((f) => ({
@@ -761,7 +813,7 @@ export default function MedicalRecordsPage() {
                                 type="text"
                                 className="modal-input"
                                 maxLength={255}
-                                placeholder="Duration (e.g. 7 days)"
+                                placeholder={t("medicalRecords.durationPlaceholder")}
                                 value={rxForm.duration}
                                 onChange={(e) =>
                                   setRxForm((f) => ({
@@ -780,42 +832,38 @@ export default function MedicalRecordsPage() {
                                   }))
                                 }
                               >
-                                <option value="">Route (optional)</option>
-                                {[
-                                  "oral",
-                                  "iv",
-                                  "im",
-                                  "subcutaneous",
-                                  "inhalation",
-                                  "topical",
-                                  "rectal",
-                                  "nasal",
-                                  "ophthalmic",
-                                  "otic",
-                                  "transdermal",
-                                ].map((r) => (
+                                <option value="">{t("medicalRecords.routeOptional")}</option>
+                                {MEDICATION_ROUTES.map((r) => (
                                   <option key={r} value={r}>
                                     {r}
                                   </option>
                                 ))}
                               </select>
                             </div>
-                            {rxError && (
-                              <div
-                                style={{ fontSize: 12, color: "var(--red)" }}
-                              >
-                                {rxError}
-                              </div>
-                            )}
                             <button
                               type="submit"
                               className="btn-outline"
-                              disabled={rxSaving || !rxForm.drug_name.trim()}
+                              disabled={!rxForm.drug_name.trim()}
                             >
-                              {rxSaving ? "Adding…" : "Add Prescription Item"}
+                              {t("medicalRecords.addPrescriptionItem")}
                             </button>
                           </form>
                         </div>
+
+                        <button
+                          type="button"
+                          className="btn-dark"
+                          style={{ margin: "4px 4px 8px" }}
+                          disabled={
+                            submitting ||
+                            (draftNotes.length === 0 &&
+                              draftDiagnoses.length === 0 &&
+                              draftItems.length === 0)
+                          }
+                          onClick={handleSubmitEncounter}
+                        >
+                          {submitting ? "Submitting…" : "Submit Encounter"}
+                        </button>
                       </>
                     )}
 
@@ -828,7 +876,7 @@ export default function MedicalRecordsPage() {
                         margin: "20px 4px 8px",
                       }}
                     >
-                      PREVIOUS ENCOUNTERS
+                      {t("medicalRecords.previousEncounters")}
                     </div>
 
                     {encounters.filter(
@@ -842,7 +890,7 @@ export default function MedicalRecordsPage() {
                           fontSize: 13,
                         }}
                       >
-                        No previous encounters for this patient.
+                        {t("medicalRecords.noPreviousEncounters")}
                       </div>
                     ) : (
                       encounters
@@ -857,7 +905,7 @@ export default function MedicalRecordsPage() {
                                   className="ti ti-file-text"
                                   aria-hidden="true"
                                 />
-                                Encounter — {enc.visit_type || "visit"}
+                                {t("medicalRecords.encounters")} — {enc.visit_type || "visit"}
                               </div>
                               <span className="ws-card-badge">
                                 {enc.created_at}
@@ -873,7 +921,7 @@ export default function MedicalRecordsPage() {
                                     marginBottom: 4,
                                   }}
                                 >
-                                  NOTES
+                                  {t("medicalRecords.notes").toUpperCase()}
                                 </div>
                                 {enc.clinical_notes.map((n) => (
                                   <p
@@ -898,7 +946,7 @@ export default function MedicalRecordsPage() {
                                     marginBottom: 4,
                                   }}
                                 >
-                                  DIAGNOSES
+                                  {t("medicalRecords.diagnoses").toUpperCase()}
                                 </div>
                                 {enc.diagnoses.map((d) => (
                                   <p
@@ -924,7 +972,7 @@ export default function MedicalRecordsPage() {
                                     marginBottom: 4,
                                   }}
                                 >
-                                  PRESCRIPTION
+                                  {t("medicalRecords.prescription").toUpperCase()}
                                 </div>
                                 {enc.prescription.items.map((item) => (
                                   <p
@@ -951,7 +999,7 @@ export default function MedicalRecordsPage() {
 
               {!recordLoading && !recordError && !patient && (
                 <div style={{ padding: 24, color: "var(--text-muted)" }}>
-                  Select a patient from the queue on the left.
+                  {t("medicalRecords.selectPatient")}
                 </div>
               )}
             </div>
@@ -960,17 +1008,17 @@ export default function MedicalRecordsPage() {
             {patient && (
               <div className="record-panel">
                 <div className="record-panel-header">
-                  <span className="record-panel-title">Medical Record</span>
+                  <span className="record-panel-title">{t("medicalRecords.medicalRecordTitle")}</span>
                 </div>
 
                 <div className="record-tabs">
-                  {RECORD_TABS.map((t) => (
+                  {RECORD_TABS.map(({ key, labelKey }) => (
                     <button
-                      key={t}
-                      className={`record-tab${recordTab === t ? " active" : ""}`}
-                      onClick={() => setRecordTab(t)}
+                      key={key}
+                      className={`record-tab${recordTab === key ? " active" : ""}`}
+                      onClick={() => setRecordTab(key)}
                     >
-                      {t}
+                      {t(labelKey)}
                     </button>
                   ))}
                 </div>
@@ -984,7 +1032,7 @@ export default function MedicalRecordsPage() {
                             className="ti ti-heart-rate-monitor teal"
                             aria-hidden="true"
                           />
-                          Chronic Conditions
+                          {t("medicalRecords.chronicConditions")}
                         </div>
                         <div className="record-section-body">
                           {conditions.length === 0 ? (
@@ -994,7 +1042,7 @@ export default function MedicalRecordsPage() {
                                 color: "var(--text-muted)",
                               }}
                             >
-                              None recorded
+                              {t("medicalRecords.noneRecorded")}
                             </div>
                           ) : (
                             conditions.map((c) => (
@@ -1012,7 +1060,7 @@ export default function MedicalRecordsPage() {
                             className="ti ti-alert-triangle red"
                             aria-hidden="true"
                           />
-                          Allergies
+                          {t("medicalRecords.allergies")}
                         </div>
                         <div className="record-section-body">
                           {allergies.length === 0 ? (
@@ -1022,7 +1070,7 @@ export default function MedicalRecordsPage() {
                                 color: "var(--text-muted)",
                               }}
                             >
-                              None known
+                              {t("medicalRecords.noneKnown")}
                             </div>
                           ) : (
                             allergies.map((a) => (
@@ -1041,7 +1089,7 @@ export default function MedicalRecordsPage() {
                             className="ti ti-surgical-staple green"
                             aria-hidden="true"
                           />
-                          Surgeries
+                          {t("medicalRecords.surgeries")}
                         </div>
                         <div className="record-section-body">
                           {surgeries.length === 0 ? (
@@ -1051,7 +1099,7 @@ export default function MedicalRecordsPage() {
                                 color: "var(--text-muted)",
                               }}
                             >
-                              None recorded
+                              {t("medicalRecords.noneRecorded")}
                             </div>
                           ) : (
                             surgeries.map((s) => (
@@ -1071,7 +1119,7 @@ export default function MedicalRecordsPage() {
                       <div className="record-section">
                         <div className="record-section-header">
                           <i className="ti ti-users amber" aria-hidden="true" />
-                          Family History
+                          {t("medicalRecords.familyHistory")}
                         </div>
                         <div className="record-section-body">
                           {family.length === 0 ? (
@@ -1081,7 +1129,7 @@ export default function MedicalRecordsPage() {
                                 color: "var(--text-muted)",
                               }}
                             >
-                              None recorded
+                              {t("medicalRecords.noneRecorded")}
                             </div>
                           ) : (
                             family.map((f) => (
@@ -1100,14 +1148,14 @@ export default function MedicalRecordsPage() {
                     <div className="record-section">
                       <div className="record-section-header">
                         <i className="ti ti-pill teal" aria-hidden="true" />
-                        Medications
+                        {t("medicalRecords.medications")}
                       </div>
                       <div className="record-section-body">
                         {medications.length === 0 ? (
                           <div
                             style={{ fontSize: 13, color: "var(--text-muted)" }}
                           >
-                            None recorded
+                            {t("medicalRecords.noneRecorded")}
                           </div>
                         ) : (
                           medications.map((m) => (
@@ -1160,7 +1208,7 @@ export default function MedicalRecordsPage() {
                             }}
                             aria-hidden="true"
                           />
-                          No attachments yet
+                          {t("medicalRecords.noAttachmentsYet")}
                         </div>
                       ) : (
                         attachments.map((a) => (
@@ -1183,14 +1231,14 @@ export default function MedicalRecordsPage() {
                           className="ti ti-file-text teal"
                           aria-hidden="true"
                         />
-                        Encounters
+                        {t("medicalRecords.encounters")}
                       </div>
                       <div className="record-section-body">
                         {encounters.length === 0 ? (
                           <div
                             style={{ fontSize: 13, color: "var(--text-muted)" }}
                           >
-                            None recorded
+                            {t("medicalRecords.noneRecorded")}
                           </div>
                         ) : (
                           encounters.map((e) => (

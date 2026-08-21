@@ -3,16 +3,17 @@ import { Link } from "react-router-dom";
 
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import { useTranslation } from "../i18n/useTranslation";
 
 import "../components/styles/Admin.css";
 
 import { getDashboardStats, getDoctors, getClinics } from "../api/admin";
 
-function getGreeting() {
+function getGreeting(t) {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return t("adminDashboard.goodMorning");
+  if (h < 17) return t("adminDashboard.goodAfternoon");
+  return t("adminDashboard.goodEvening");
 }
 
 function statusColor(status) {
@@ -26,18 +27,19 @@ function statusColor(status) {
   return map[status] || "gray";
 }
 
-function statusLabel(status) {
+function statusLabel(status, t) {
   const map = {
-    pending: "Pending",
-    verified: "Verified",
-    rejected: "Rejected",
-    suspended: "Suspended",
-    active: "Active",
+    pending: t("adminCommon.pending"),
+    verified: t("adminCommon.verified"),
+    rejected: t("adminCommon.rejected"),
+    suspended: t("adminCommon.suspended"),
+    active: t("adminCommon.active"),
   };
-  return map[status] || "Unknown";
+  return map[status] || status;
 }
 
 export default function AdminDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [recentDoctors, setRecentDoctors] = useState([]);
   const [recentClinics, setRecentClinics] = useState([]);
@@ -71,7 +73,7 @@ export default function AdminDashboard() {
             spec: d.departments?.[0]?.name || "General",
             clinic: d.clinics?.[0]?.name || "Unassigned",
             status: statusColor(d.verification_status),
-            statusLabel: statusLabel(d.verification_status),
+            statusLabel: statusLabel(d.verification_status, t),
           };
         }),
       );
@@ -81,7 +83,7 @@ export default function AdminDashboard() {
           id: c.id,
           name: c.name,
           status: statusColor(c.status),
-          sLabel: statusLabel(c.status),
+          sLabel: statusLabel(c.status, t),
         })),
       );
     } catch (err) {
@@ -99,24 +101,23 @@ export default function AdminDashboard() {
       <AdminSidebar />
       <div className="adm-main">
         <AdminTopbar
-          title="Admin Dashboard"
-          searchPlaceholder="Search doctors, clinics..."
+          title={t("admin.dashboard")}
+          searchPlaceholder={t("adminCommon.searchDoctors")}
         />
         <div className="adm-content">
           {/* Header */}
           <div className="adm-page-header">
             <div className="adm-page-header-left">
-              <h1>{getGreeting()}, Admin.</h1>
-              <p>System-wide overview — doctors, clinics, and departments.</p>
+              <h1>{getGreeting(t)}, {t("adminDashboard.admin")}.</h1>
+              <p>{t("adminDashboard.overview")}</p>
             </div>
             <div className="adm-header-actions">
               <Link to="/admin/doctors" className="adm-btn adm-btn-dark">
-                <i className="ti ti-stethoscope" aria-hidden="true" /> Manage
-                doctors
+                <i className="ti ti-stethoscope" aria-hidden="true" /> {t("adminDashboard.manageDoctors")}
               </Link>
               <Link to="/admin/clinics" className="adm-btn adm-btn-outline">
                 <i className="ti ti-building-hospital" aria-hidden="true" />{" "}
-                Manage clinics
+                {t("adminDashboard.manageClinics")}
               </Link>
             </div>
           </div>
@@ -126,7 +127,7 @@ export default function AdminDashboard() {
             <div
               style={{
                 padding: "12px 16px",
-                background: "#fee",
+                background: "#fcc",
                 border: "1px solid #fcc",
                 borderRadius: "8px",
                 marginBottom: "16px",
@@ -141,7 +142,7 @@ export default function AdminDashboard() {
           {/* Loading state */}
           {loading && (
             <div style={{ textAlign: "center", padding: "40px" }}>
-              <p>Loading dashboard...</p>
+              <p>{t("adminDashboard.loadingDashboard")}</p>
             </div>
           )}
 
@@ -156,17 +157,17 @@ export default function AdminDashboard() {
               >
                 {[
                   {
-                    label: "Total doctors",
+                    label: t("adminDashboard.totalDoctors"),
                     num: stats.totalDoctors,
                     icon: "ti-stethoscope",
                   },
                   {
-                    label: "Total clinics",
+                    label: t("adminDashboard.totalClinics"),
                     num: stats.totalClinics,
                     icon: "ti-building-hospital",
                   },
                   {
-                    label: "Departments",
+                    label: t("adminDashboard.departments"),
                     num: stats.totalDepartments,
                     icon: "ti-category",
                   },
@@ -188,17 +189,17 @@ export default function AdminDashboard() {
               <div className="adm-grid-2 adm-section-gap">
                 <div className="adm-card">
                   <div className="adm-card-header">
-                    <h2 className="adm-card-title">Recent doctors</h2>
+                    <h2 className="adm-card-title">{t("adminDashboard.recentDoctors")}</h2>
                     <Link to="/admin/doctors" className="adm-card-link">
-                      View all →
+                      {t("adminCommon.viewAll")}
                     </Link>
                   </div>
                   <table className="adm-table">
                     <thead>
                       <tr>
-                        <th>Doctor</th>
-                        <th>Clinic</th>
-                        <th>Status</th>
+                        <th>{t("adminDashboard.doctor")}</th>
+                        <th>{t("adminDashboard.clinic")}</th>
+                        <th>{t("adminDashboard.status")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -241,7 +242,7 @@ export default function AdminDashboard() {
                             colSpan="3"
                             style={{ textAlign: "center", padding: 16 }}
                           >
-                            No doctors yet
+                            {t("adminDashboard.noDoctorsYet")}
                           </td>
                         </tr>
                       )}
@@ -251,9 +252,9 @@ export default function AdminDashboard() {
 
                 <div className="adm-card">
                   <div className="adm-card-header">
-                    <h2 className="adm-card-title">Recent clinics</h2>
+                    <h2 className="adm-card-title">{t("adminDashboard.recentClinics")}</h2>
                     <Link to="/admin/clinics" className="adm-card-link">
-                      View all →
+                      {t("adminCommon.viewAll")}
                     </Link>
                   </div>
                   {recentClinics.length > 0 ? (
@@ -287,7 +288,7 @@ export default function AdminDashboard() {
                         color: "var(--adm-text-muted)",
                       }}
                     >
-                      No clinics yet
+                      {t("adminDashboard.noClinicsYet")}
                     </div>
                   )}
                 </div>

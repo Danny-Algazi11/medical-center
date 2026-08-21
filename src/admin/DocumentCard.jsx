@@ -1,4 +1,7 @@
+import { useTranslation } from "../i18n/useTranslation";
+
 export default function DocumentCard({ label, url, icon = "ti-file" }) {
+  const { t } = useTranslation();
   const hasFile = Boolean(url);
 
   return (
@@ -32,7 +35,7 @@ export default function DocumentCard({ label, url, icon = "ti-file" }) {
       />
       <span style={{ fontSize: 12, fontWeight: 500 }}>{label}</span>
       <span style={{ fontSize: 11, color: "var(--adm-text-muted)" }}>
-        {hasFile ? "View file" : "Not uploaded"}
+        {hasFile ? t("adminCommon.viewFile") : t("adminCommon.notUploaded")}
       </span>
     </a>
   );

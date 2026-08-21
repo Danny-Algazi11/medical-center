@@ -1,28 +1,22 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Auth.css";
 
-const COPY = {
-  doctor: {
-    portalName: "doctor portal",
-    dashboardName: "doctor dashboard",
-    features: [
-      "Admin verification required",
-      "Secure medical records access",
-      "Dashboard opens after approval",
-    ],
-  },
-  reception: {
-    portalName: "reception portal",
-    dashboardName: "reception dashboard",
-    features: [
-      "Admin verification required",
-      "Manage patient check-ins & scheduling",
-      "Dashboard opens after approval",
-    ],
-  },
-};
-
 export default function DoctorPendingApprovalPage({ role = "doctor" }) {
+  const { t } = useTranslation();
+
+  const COPY = {
+    doctor: {
+      portalName: "doctor portal",
+      dashboardName: "doctor dashboard",
+      features: [t("pending.doctorFeature1"), t("pending.doctorFeature2"), t("pending.doctorFeature3")],
+    },
+    reception: {
+      portalName: "reception portal",
+      dashboardName: "reception dashboard",
+      features: [t("pending.doctorFeature1"), t("pending.receptionFeature2"), t("pending.doctorFeature3")],
+    },
+  };
   const copy = COPY[role] || COPY.doctor;
 
   return (
@@ -48,19 +42,18 @@ export default function DoctorPendingApprovalPage({ role = "doctor" }) {
           </div>
           <div>
             <div className="auth-logo-name">MediCenter</div>
-            <div className="auth-logo-sub">Health Portal</div>
+            <div className="auth-logo-sub">{t("auth.healthPortal")}</div>
           </div>
         </div>
 
         <div className="auth-hero">
           <h2>
-            Profile
+            {t("pending.reviewTitle")}
             <br />
-            <em>review.</em>
+            <em>{t("pending.reviewEm")}</em>
           </h2>
           <p>
-            Your account is being reviewed by the admin team before you can
-            access the {copy.portalName}.
+            {t("pending.reviewingText")} {copy.portalName}.
           </p>
           <div className="auth-features">
             {copy.features.map((f) => (
@@ -73,7 +66,7 @@ export default function DoctorPendingApprovalPage({ role = "doctor" }) {
         </div>
 
         <p className="auth-tagline">
-          © {new Date().getFullYear()} MediCenter. All rights reserved.
+          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
         </p>
       </aside>
 
@@ -99,8 +92,7 @@ export default function DoctorPendingApprovalPage({ role = "doctor" }) {
               marginBottom: "1.5rem",
             }}
           >
-            thank you for registering into MediCenter Health portal, pls wait
-            until your profile get approved by admins
+            {t("pending.thankYou")}
           </div>
 
           <p
@@ -111,8 +103,7 @@ export default function DoctorPendingApprovalPage({ role = "doctor" }) {
               textAlign: "center",
             }}
           >
-            Once the admin approves your profile, you will be able to access the{" "}
-            {copy.dashboardName}.
+            {t("pending.onceApproved")} {copy.dashboardName}.
           </p>
 
           <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
@@ -121,7 +112,7 @@ export default function DoctorPendingApprovalPage({ role = "doctor" }) {
               className="auth-btn"
               style={{ display: "inline-block" }}
             >
-              Back to login
+              {t("pending.backToLogin")}
             </Link>
           </div>
         </div>

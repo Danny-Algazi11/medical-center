@@ -1,157 +1,193 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import { getReports, markReportUnderReview, resolveReport } from "../api/admin";
+import { formatTimestamp } from "./auditFormat";
+import { useTranslation } from "../i18n/useTranslation";
 import "../components/styles/Admin.css";
 
-const COMPLAINTS_DATA = [
-  {
-    id: 1,
-    title: "Missed diagnosis",
-    doctor: "Dr. Marcus Kim",
-    patient: "Michael Scott",
-    patientId: "P-4421",
-    clinic: "East Branch",
-    date: "Jun 2, 2026",
-    priority: "red",
-    pLabel: "High",
-    status: "open",
-    sLabel: "Open",
-    description:
-      "Patient reports that doctor dismissed symptoms that later resulted in a delayed cancer diagnosis. Patient is requesting formal review and compensation.",
-  },
-  {
-    id: 2,
-    title: "Rude behaviour",
-    doctor: "Dr. Chen",
-    patient: "Pam Beesly",
-    patientId: "P-8832",
-    clinic: "City Central",
-    date: "May 30, 2026",
-    priority: "amber",
-    pLabel: "Medium",
-    status: "open",
-    sLabel: "Open",
-    description:
-      "Patient claims the doctor was dismissive and rude during consultation. Used inappropriate language and did not explain the treatment plan adequately.",
-  },
-  {
-    id: 3,
-    title: "Late appointment",
-    doctor: "Dr. Ahmad",
-    patient: "Jim Halpert",
-    patientId: "P-9102",
-    clinic: "City Central",
-    date: "May 25, 2026",
-    priority: "teal",
-    pLabel: "Low",
-    status: "reviewing",
-    sLabel: "Reviewing",
-    description:
-      "Doctor was 45 minutes late to a scheduled appointment with no prior notice or apology. Patient had to leave before being seen.",
-  },
-  {
-    id: 4,
-    title: "Wrong prescription",
-    doctor: "Dr. Julia Lee",
-    patient: "Dwight Schrute",
-    patientId: "P-7761",
-    clinic: "North Branch",
-    date: "May 20, 2026",
-    priority: "red",
-    pLabel: "High",
-    status: "resolved",
-    sLabel: "Resolved",
-    description:
-      "Patient was given incorrect medication dosage. Pharmacist caught the error before dispensing. No harm resulted but formal complaint was filed.",
-  },
-  {
-    id: 5,
-    title: "Billing discrepancy",
-    doctor: "Dr. Robert S.",
-    patient: "Angela Martin",
-    patientId: "P-3391",
-    clinic: "South Branch",
-    date: "May 15, 2026",
-    priority: "amber",
-    pLabel: "Medium",
-    status: "resolved",
-    sLabel: "Resolved",
-    description:
-      "Patient was charged for services not rendered. Invoice included two additional consultation fees not authorized by the patient.",
-  },
-  {
-    id: 6,
-    title: "Privacy breach",
-    doctor: "Dr. Tahani Chen",
-    patient: "Kevin Malone",
-    patientId: "P-6612",
-    clinic: "City Central",
-    date: "May 10, 2026",
-    priority: "red",
-    pLabel: "High",
-    status: "open",
-    sLabel: "Open",
-    description:
-      "Doctor allegedly shared patient medical information with a family member without patient consent. Patient is requesting HIPAA investigation.",
-  },
+// Real values from App\Core\Enums\ReportCategory
+const CATEGORY_FILTER = [
+  "All",
+  "misconduct",
+  "negligence",
+  "fraud",
+  "verbal_abuse",
+  "privacy_violation",
+  "other",
+];
+// Real values from App\Core\Enums\ReportStatus
+const STATUS_FILTER = [
+  "All",
+  "pending",
+  "under_review",
+  "action_taken",
+  "resolved",
+  "dismissed",
 ];
 
-const PRIORITY_FILTER = ["All", "High", "Medium", "Low"];
-const STATUS_FILTER = ["All", "Open", "Reviewing", "Resolved"];
+function fallbackLabel(value) {
+  if (!value) return "—";
+  return value
+    .split("_")
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+const CATEGORY_KEYS = {
+  misconduct: "complaints.misconduct",
+  negligence: "complaints.negligence",
+  fraud: "complaints.fraud",
+  verbal_abuse: "complaints.verbalAbuse",
+  privacy_violation: "complaints.privacyViolation",
+  other: "complaints.other",
+};
+
+const STATUS_KEYS = {
+  pending: "complaints.pending",
+  under_review: "complaints.underReview",
+  action_taken: "complaints.actionTaken",
+  resolved: "complaints.resolved",
+  dismissed: "complaints.dismissed",
+};
+
+function formatCategory(value, t) {
+  return value && CATEGORY_KEYS[value] ? t(CATEGORY_KEYS[value]) : fallbackLabel(value);
+}
+function formatStatus(value, t) {
+  return value && STATUS_KEYS[value] ? t(STATUS_KEYS[value]) : fallbackLabel(value);
+}
+
+function statusBadgeClass(status) {
+  const map = {
+    pending: "adm-badge-red",
+    under_review: "adm-badge-amber",
+    action_taken: "adm-badge-teal",
+    resolved: "adm-badge-green",
+    dismissed: "adm-badge-gray",
+  };
+  return map[status] || "adm-badge-gray";
+}
 
 export default function ComplaintsPage() {
-  const [complaints, setComplaints] = useState(COMPLAINTS_DATA);
-  const [priority, setPriority] = useState("All");
+  const { t } = useTranslation();
+  const [reports, setReports] = useState([]);
+  const [meta, setMeta] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [category, setCategory] = useState("All");
   const [status, setStatus] = useState("All");
   const [selected, setSelected] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const filtered = complaints.filter((c) => {
-    const pOk = priority === "All" || c.pLabel === priority;
-    const sOk = status === "All" || c.sLabel === status;
-    return pOk && sOk;
-  });
+  const loadReports = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = { per_page: 50 };
+      if (category !== "All") params.category = category;
+      if (status !== "All") params.status = status;
 
-  function takeAction(id, newStatus, newSLabel) {
-    setComplaints((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, status: newStatus, sLabel: newSLabel } : c,
-      ),
+      const res = await getReports(params);
+      setReports(res.data.data || []);
+      setMeta(res.data.meta || null);
+    } catch (err) {
+      setError(err.message || "Failed to load reports");
+    } finally {
+      setLoading(false);
+    }
+  }, [category, status]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
+
+  function applyUpdate(reportId, updated) {
+    setReports((prev) =>
+      prev.map((r) => (r.id === reportId ? { ...r, ...updated } : r)),
     );
-    setSelected((prev) =>
-      prev?.id === id
-        ? { ...prev, status: newStatus, sLabel: newSLabel }
-        : prev,
-    );
+    setSelected((prev) => (prev?.id === reportId ? { ...prev, ...updated } : prev));
   }
+
+  async function handleMarkUnderReview(reportId) {
+    setActionLoading(true);
+    setError("");
+    try {
+      const res = await markReportUnderReview(reportId);
+      applyUpdate(reportId, res.data.data);
+    } catch (err) {
+      setError(err.message || "Failed to update report");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleResolve(reportId, finalStatus) {
+    const admin_notes = window.prompt(
+      `Notes for marking this report "${formatStatus(finalStatus, t)}" (optional):`,
+    );
+    if (admin_notes === null) return;
+    const admin_action =
+      finalStatus === "action_taken"
+        ? window.prompt("What action was taken against the doctor? (optional):") || undefined
+        : undefined;
+
+    setActionLoading(true);
+    setError("");
+    try {
+      const res = await resolveReport(reportId, {
+        status: finalStatus,
+        admin_notes: admin_notes || undefined,
+        admin_action,
+      });
+      applyUpdate(reportId, res.data.data);
+    } catch (err) {
+      setError(err.message || "Failed to resolve report");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  const openCount = reports.filter((r) => r.status === "pending").length;
+  const reviewingCount = reports.filter((r) => r.status === "under_review").length;
+  const closedCount = reports.filter((r) =>
+    ["action_taken", "resolved", "dismissed"].includes(r.status),
+  ).length;
 
   return (
     <div className="adm-shell">
       <AdminSidebar />
       <div className="adm-main">
         <AdminTopbar
-          title="Complaints & Reports"
-          searchPlaceholder="Search complaints..."
+          title={t("complaints.title")}
+          searchPlaceholder={t("adminCommon.searchDoctors")}
         />
         <div className="adm-content">
           {/* Header */}
           <div className="adm-page-header">
             <div className="adm-page-header-left">
-              <h1>Complaints &amp; reports</h1>
-              <p>
-                View, investigate, and take action on patient complaints and
-                reports.
-              </p>
-            </div>
-            <div className="adm-header-actions">
-              <button className="adm-btn adm-btn-outline">
-                <i className="ti ti-download" aria-hidden="true" /> Export
-              </button>
+              <h1>{t("complaints.title")}</h1>
+              <p>{t("complaints.subtitle")}</p>
             </div>
           </div>
 
-          {/* Alert for high priority */}
-          {complaints.filter((c) => c.pLabel === "High" && c.sLabel === "Open")
-            .length > 0 && (
+          {error && (
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "#fee",
+                border: "1px solid #fcc",
+                borderRadius: "8px",
+                marginBottom: "16px",
+                color: "#c00",
+                fontSize: "13px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {openCount > 0 && (
             <div className="adm-alert adm-alert-red">
               <i
                 className="ti ti-alert-triangle"
@@ -160,14 +196,9 @@ export default function ComplaintsPage() {
               />
               <div>
                 <strong>
-                  {
-                    complaints.filter(
-                      (c) => c.pLabel === "High" && c.sLabel === "Open",
-                    ).length
-                  }{" "}
-                  high-priority complaints
+                  {openCount} {openCount === 1 ? t("complaints.pendingReport") : t("complaints.pendingReports")}
                 </strong>{" "}
-                require immediate attention.
+                {openCount === 1 ? t("complaints.requiresReview") : t("complaints.requireReview")}
               </div>
             </div>
           )}
@@ -183,23 +214,23 @@ export default function ComplaintsPage() {
           >
             {[
               {
-                label: "Total",
-                num: complaints.length,
+                label: t("complaints.total"),
+                num: meta?.total ?? reports.length,
                 color: "var(--adm-text-primary)",
               },
               {
-                label: "Open",
-                num: complaints.filter((c) => c.sLabel === "Open").length,
+                label: t("complaints.pending"),
+                num: openCount,
                 color: "var(--adm-red)",
               },
               {
-                label: "Reviewing",
-                num: complaints.filter((c) => c.sLabel === "Reviewing").length,
+                label: t("complaints.underReview"),
+                num: reviewingCount,
                 color: "var(--adm-amber)",
               },
               {
-                label: "Resolved",
-                num: complaints.filter((c) => c.sLabel === "Resolved").length,
+                label: t("complaints.closed"),
+                num: closedCount,
                 color: "var(--adm-green)",
               },
             ].map((s) => (
@@ -217,24 +248,21 @@ export default function ComplaintsPage() {
           {/* Filter bar */}
           <div className="adm-filter-bar">
             <span
-              style={{
-                fontSize: 12,
-                color: "var(--adm-text-muted)",
-                fontWeight: 500,
-              }}
+              style={{ fontSize: 12, color: "var(--adm-text-muted)", fontWeight: 500 }}
             >
-              Priority:
+              {t("complaints.category")}:
             </span>
-            {PRIORITY_FILTER.map((f) => (
-              <button
-                key={f}
-                className={`adm-btn ${priority === f ? "adm-btn-dark" : "adm-btn-outline"}`}
-                style={{ padding: "6px 14px", fontSize: 12 }}
-                onClick={() => setPriority(f)}
-              >
-                {f}
-              </button>
-            ))}
+            <select
+              className="adm-filter-select"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {CATEGORY_FILTER.map((c) => (
+                <option key={c} value={c}>
+                  {c === "All" ? t("adminCommon.all") : formatCategory(c, t)}
+                </option>
+              ))}
+            </select>
             <span
               style={{
                 fontSize: 12,
@@ -243,311 +271,323 @@ export default function ComplaintsPage() {
                 marginLeft: 8,
               }}
             >
-              Status:
+              {t("complaints.status")}:
             </span>
-            {STATUS_FILTER.map((f) => (
-              <button
-                key={f}
-                className={`adm-btn ${status === f ? "adm-btn-dark" : "adm-btn-outline"}`}
-                style={{ padding: "6px 14px", fontSize: 12 }}
-                onClick={() => setStatus(f)}
-              >
-                {f}
-              </button>
-            ))}
+            <select
+              className="adm-filter-select"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              {STATUS_FILTER.map((s) => (
+                <option key={s} value={s}>
+                  {s === "All" ? t("adminCommon.all") : formatStatus(s, t)}
+                </option>
+              ))}
+            </select>
           </div>
+
+          {loading && (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <p>{t("complaints.loadingReports")}</p>
+            </div>
+          )}
 
           {/* Two-col: table + detail panel */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: selected ? "1fr 360px" : "1fr",
-              gap: 16,
-              transition: "all 0.2s",
-            }}
-          >
-            {/* Table */}
-            <div className="adm-card">
-              <table className="adm-table">
-                <thead>
-                  <tr>
-                    <th>Complaint</th>
-                    <th>Doctor</th>
-                    <th>Patient</th>
-                    <th>Date</th>
-                    <th>Priority</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr
-                      key={c.id}
-                      style={{
-                        cursor: "pointer",
-                        background: selected?.id === c.id ? "#f0f7f2" : "",
-                      }}
-                      onClick={() =>
-                        setSelected((prev) => (prev?.id === c.id ? null : c))
-                      }
-                    >
-                      <td>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "var(--adm-text-primary)",
-                          }}
-                        >
-                          {c.title}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--adm-text-muted)",
-                          }}
-                        >
-                          {c.clinic}
-                        </div>
-                      </td>
-                      <td
+          {!loading && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: selected ? "1fr 360px" : "1fr",
+                gap: 16,
+                transition: "all 0.2s",
+              }}
+            >
+              {/* Table */}
+              <div className="adm-card">
+                <table className="adm-table">
+                  <thead>
+                    <tr>
+                      <th>{t("complaints.report")}</th>
+                      <th>{t("complaints.doctor")}</th>
+                      <th>{t("complaints.patient")}</th>
+                      <th>{t("complaints.date")}</th>
+                      <th>{t("complaints.status")}</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map((r) => (
+                      <tr
+                        key={r.id}
                         style={{
-                          fontSize: 12,
-                          color: "var(--adm-text-secondary)",
+                          cursor: "pointer",
+                          background: selected?.id === r.id ? "#f0f7f2" : "",
+                        }}
+                        onClick={() =>
+                          setSelected((prev) => (prev?.id === r.id ? null : r))
+                        }
+                      >
+                        <td>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: "var(--adm-text-primary)",
+                            }}
+                          >
+                            {formatCategory(r.category, t)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--adm-text-muted)",
+                              maxWidth: 260,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {r.description}
+                          </div>
+                        </td>
+                        <td
+                          style={{ fontSize: 12, color: "var(--adm-text-secondary)" }}
+                        >
+                          {r.doctor?.name || "—"}
+                        </td>
+                        <td>
+                          <div style={{ fontSize: 12, fontWeight: 500 }}>
+                            {r.patient?.name || "—"}
+                          </div>
+                        </td>
+                        <td style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
+                          {formatTimestamp(r.created_at)}
+                        </td>
+                        <td>
+                          <span className={`adm-badge ${statusBadgeClass(r.status)}`}>
+                            {formatStatus(r.status, t)}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="adm-icon-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected((prev) => (prev?.id === r.id ? null : r));
+                            }}
+                          >
+                            <i className="ti ti-chevron-right" aria-hidden="true" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {reports.length === 0 && (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: "center", padding: 24 }}>
+                          {t("complaints.noReportsMatch")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                <div className="adm-table-footer">
+                  <span>
+                    {t("complaints.showing")} {reports.length} {t("complaints.of")} {meta?.total ?? reports.length} {t("complaints.reports")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Detail panel */}
+              {selected && (
+                <div
+                  className="adm-card"
+                  style={{ height: "fit-content", position: "sticky", top: 86 }}
+                >
+                  <div className="adm-card-header">
+                    <h2 className="adm-card-title">{t("complaints.reportDetail")}</h2>
+                    <button className="adm-icon-btn" onClick={() => setSelected(null)}>
+                      <i className="ti ti-x" aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "16px 18px",
+                      borderBottom: "1px solid var(--adm-card-border)",
+                    }}
+                  >
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}
+                    >
+                      <span className={`adm-badge ${statusBadgeClass(selected.status)}`}>
+                        {formatStatus(selected.status, t)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: "var(--adm-text-primary)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {formatCategory(selected.category, t)}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
+                      {t("complaints.filed")} {formatTimestamp(selected.created_at)}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "14px 18px",
+                      borderBottom: "1px solid var(--adm-card-border)",
+                    }}
+                  >
+                    <div className="adm-info-row">
+                      <span className="adm-info-label">{t("complaints.doctor")}</span>
+                      <span className="adm-info-value">{selected.doctor?.name || "—"}</span>
+                    </div>
+                    <div className="adm-info-row">
+                      <span className="adm-info-label">{t("complaints.patient")}</span>
+                      <span className="adm-info-value">{selected.patient?.name || "—"}</span>
+                    </div>
+                    {selected.reviewed_at && (
+                      <div className="adm-info-row">
+                        <span className="adm-info-label">{t("complaints.reviewed")}</span>
+                        <span className="adm-info-value">
+                          {formatTimestamp(selected.reviewed_at)}
+                        </span>
+                      </div>
+                    )}
+                    {selected.resolved_at && (
+                      <div className="adm-info-row">
+                        <span className="adm-info-label">{t("complaints.resolved")}</span>
+                        <span className="adm-info-value">
+                          {formatTimestamp(selected.resolved_at)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "14px 18px",
+                      borderBottom: "1px solid var(--adm-card-border)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--adm-text-muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {t("complaints.description")}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--adm-text-secondary)",
+                        lineHeight: 1.65,
+                        fontWeight: 300,
+                      }}
+                    >
+                      {selected.description}
+                    </div>
+                  </div>
+
+                  {(selected.admin_action || selected.admin_notes) && (
+                    <div
+                      style={{
+                        padding: "14px 18px",
+                        borderBottom: "1px solid var(--adm-card-border)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "var(--adm-text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          marginBottom: 8,
                         }}
                       >
-                        {c.doctor}
-                      </td>
-                      <td>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>
-                          {c.patient}
+                        {t("complaints.adminResolution")}
+                      </div>
+                      {selected.admin_action && (
+                        <div style={{ fontSize: 13, marginBottom: 4 }}>
+                          <strong>{t("complaints.action")}</strong> {selected.admin_action}
                         </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--adm-text-muted)",
-                          }}
-                        >
-                          {c.patientId}
+                      )}
+                      {selected.admin_notes && (
+                        <div style={{ fontSize: 13, color: "var(--adm-text-secondary)" }}>
+                          {selected.admin_notes}
                         </div>
-                      </td>
-                      <td
-                        style={{ fontSize: 12, color: "var(--adm-text-muted)" }}
+                      )}
+                    </div>
+                  )}
+
+                  {!["action_taken", "resolved", "dismissed"].includes(selected.status) && (
+                    <div style={{ padding: "14px 18px" }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "var(--adm-text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          marginBottom: 10,
+                        }}
                       >
-                        {c.date}
-                      </td>
-                      <td>
-                        <span className={`adm-badge adm-badge-${c.priority}`}>
-                          {c.pLabel}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          className={`adm-badge ${c.sLabel === "Resolved" ? "adm-badge-green" : c.sLabel === "Reviewing" ? "adm-badge-amber" : "adm-badge-red"}`}
-                        >
-                          {c.sLabel}
-                        </span>
-                      </td>
-                      <td>
+                        {t("complaints.takeAction")}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {selected.status === "pending" && (
+                          <button
+                            className="adm-btn adm-btn-amber"
+                            style={{ justifyContent: "flex-start" }}
+                            disabled={actionLoading}
+                            onClick={() => handleMarkUnderReview(selected.id)}
+                          >
+                            <i className="ti ti-search" aria-hidden="true" /> {t("complaints.markUnderReview")}
+                          </button>
+                        )}
                         <button
-                          className="adm-icon-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelected((prev) =>
-                              prev?.id === c.id ? null : c,
-                            );
-                          }}
+                          className="adm-btn adm-btn-dark"
+                          style={{ justifyContent: "flex-start" }}
+                          disabled={actionLoading}
+                          onClick={() => handleResolve(selected.id, "action_taken")}
                         >
-                          <i
-                            className="ti ti-chevron-right"
-                            aria-hidden="true"
-                          />
+                          <i className="ti ti-gavel" aria-hidden="true" /> {t("complaints.resolveActionTaken")}
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="adm-table-footer">
-                <span>
-                  Showing {filtered.length} of {complaints.length} complaints
-                </span>
-                <div className="adm-pagination">
-                  <button className="adm-page-btn active">1</button>
+                        <button
+                          className="adm-btn adm-btn-green"
+                          style={{ justifyContent: "flex-start" }}
+                          disabled={actionLoading}
+                          onClick={() => handleResolve(selected.id, "resolved")}
+                        >
+                          <i className="ti ti-circle-check" aria-hidden="true" /> {t("complaints.markResolved")}
+                        </button>
+                        <button
+                          className="adm-btn adm-btn-outline"
+                          style={{ justifyContent: "flex-start" }}
+                          disabled={actionLoading}
+                          onClick={() => handleResolve(selected.id, "dismissed")}
+                        >
+                          <i className="ti ti-x" aria-hidden="true" /> {t("complaints.dismiss")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Detail panel */}
-            {selected && (
-              <div
-                className="adm-card"
-                style={{ height: "fit-content", position: "sticky", top: 86 }}
-              >
-                <div className="adm-card-header">
-                  <h2 className="adm-card-title">Complaint detail</h2>
-                  <button
-                    className="adm-icon-btn"
-                    onClick={() => setSelected(null)}
-                  >
-                    <i className="ti ti-x" aria-hidden="true" />
-                  </button>
-                </div>
-
-                <div
-                  style={{
-                    padding: "16px 18px",
-                    borderBottom: "1px solid var(--adm-card-border)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <span
-                      className={`adm-badge adm-badge-${selected.priority}`}
-                    >
-                      {selected.pLabel} Priority
-                    </span>
-                    <span
-                      className={`adm-badge ${selected.sLabel === "Resolved" ? "adm-badge-green" : selected.sLabel === "Reviewing" ? "adm-badge-amber" : "adm-badge-red"}`}
-                    >
-                      {selected.sLabel}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: "var(--adm-text-primary)",
-                      marginBottom: 4,
-                    }}
-                  >
-                    {selected.title}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                    Filed on {selected.date}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "14px 18px",
-                    borderBottom: "1px solid var(--adm-card-border)",
-                  }}
-                >
-                  <div className="adm-info-row">
-                    <span className="adm-info-label">Doctor</span>
-                    <span className="adm-info-value">{selected.doctor}</span>
-                  </div>
-                  <div className="adm-info-row">
-                    <span className="adm-info-label">Patient</span>
-                    <span className="adm-info-value">{selected.patient}</span>
-                  </div>
-                  <div className="adm-info-row">
-                    <span className="adm-info-label">Patient ID</span>
-                    <span className="adm-info-value">{selected.patientId}</span>
-                  </div>
-                  <div className="adm-info-row">
-                    <span className="adm-info-label">Clinic</span>
-                    <span className="adm-info-value">{selected.clinic}</span>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    padding: "14px 18px",
-                    borderBottom: "1px solid var(--adm-card-border)",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "var(--adm-text-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Description
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "var(--adm-text-secondary)",
-                      lineHeight: 1.65,
-                      fontWeight: 300,
-                    }}
-                  >
-                    {selected.description}
-                  </div>
-                </div>
-
-                <div style={{ padding: "14px 18px" }}>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "var(--adm-text-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      marginBottom: 10,
-                    }}
-                  >
-                    Take action
-                  </div>
-                  <div
-                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                  >
-                    {selected.sLabel !== "Reviewing" && (
-                      <button
-                        className="adm-btn adm-btn-amber"
-                        style={{ justifyContent: "flex-start" }}
-                        onClick={() =>
-                          takeAction(selected.id, "reviewing", "Reviewing")
-                        }
-                      >
-                        <i className="ti ti-search" aria-hidden="true" /> Mark
-                        as under review
-                      </button>
-                    )}
-                    {selected.sLabel !== "Resolved" && (
-                      <button
-                        className="adm-btn adm-btn-green"
-                        style={{ justifyContent: "flex-start" }}
-                        onClick={() =>
-                          takeAction(selected.id, "resolved", "Resolved")
-                        }
-                      >
-                        <i className="ti ti-circle-check" aria-hidden="true" />{" "}
-                        Mark as resolved
-                      </button>
-                    )}
-                    <button
-                      className="adm-btn adm-btn-dark"
-                      style={{ justifyContent: "flex-start" }}
-                    >
-                      <i className="ti ti-user-off" aria-hidden="true" />{" "}
-                      Suspend doctor
-                    </button>
-                    <button
-                      className="adm-btn adm-btn-outline"
-                      style={{ justifyContent: "flex-start" }}
-                    >
-                      <i className="ti ti-message-circle" aria-hidden="true" />{" "}
-                      Contact patient
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

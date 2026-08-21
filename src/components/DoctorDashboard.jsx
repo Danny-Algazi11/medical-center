@@ -3,18 +3,21 @@ import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useClinic } from "../context/ClinicContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 import "./styles/Appointments.css";
 import { getDoctorAppointments } from "../api/Appointments";
 
-const STATUS_META = {
-  scheduled: { label: "Scheduled", badge: "scheduled" },
-  checked_in: { label: "Checked-in", badge: "checked-in" },
-  in_progress: { label: "In progress", badge: "in-progress" },
-  completed: { label: "Completed", badge: "completed" },
-  cancelled: { label: "Cancelled", badge: "cancelled" },
-  no_show: { label: "No-show", badge: "no-show" },
-};
+function statusMeta(t) {
+  return {
+    scheduled: { label: t("appointments.scheduled"), badge: "scheduled" },
+    checked_in: { label: t("appointments.checkIn"), badge: "checked-in" },
+    in_progress: { label: t("appointments.inProgress"), badge: "in-progress" },
+    completed: { label: t("doctorDashboard.completed"), badge: "completed" },
+    cancelled: { label: t("appointments.cancel"), badge: "cancelled" },
+    no_show: { label: t("appointments.noShow"), badge: "no-show" },
+  };
+}
 
 function initialsOf(name) {
   if (!name) return "?";
@@ -39,11 +42,11 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function getGreeting() {
+function getGreeting(t) {
   const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
+  if (h < 12) return t("doctorDashboard.goodMorning");
+  if (h < 17) return t("doctorDashboard.goodAfternoon");
+  return t("doctorDashboard.goodEvening");
 }
 
 function getDateLabel() {
@@ -57,6 +60,8 @@ function getDateLabel() {
 export default function DoctorDashboard() {
   const navigate = useNavigate();
   const { selectedClinic, selectedClinicId, clinics } = useClinic();
+  const { t } = useTranslation();
+  const STATUS_META = statusMeta(t);
 
   const [allToday, setAllToday] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,19 +98,19 @@ export default function DoctorDashboard() {
       icon: "ti-calendar-event",
       color: "teal",
       num: scoped.length,
-      label: "Today's Appointments",
+      label: t("doctorDashboard.todaysAppointments"),
     },
     {
       icon: "ti-circle-check",
       color: "green",
       num: completedCount,
-      label: "Completed",
+      label: t("doctorDashboard.completed"),
     },
     {
       icon: "ti-hourglass",
       color: "amber",
       num: remainingCount,
-      label: "Remaining",
+      label: t("doctorDashboard.remaining"),
     },
   ];
 
@@ -122,16 +127,16 @@ export default function DoctorDashboard() {
       <Sidebar />
 
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search patients..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
 
         <main className="page-content">
           <div className="page-header">
             <div className="page-header-left">
-              <h1>{getGreeting()}</h1>
+              <h1>{getGreeting(t)}</h1>
               <p>
                 {selectedClinic
-                  ? `Here's an overview of your schedule at ${selectedClinic.clinic_name} today.`
-                  : "Here's an overview of your schedule for today."}
+                  ? `${t("doctorDashboard.overviewAt")} ${selectedClinic.clinic_name} ${t("doctorDashboard.overviewToday")}`
+                  : t("doctorDashboard.overviewGeneric")}
               </p>
             </div>
             <div className="date-badge">
@@ -142,8 +147,7 @@ export default function DoctorDashboard() {
 
           {clinics.length === 0 && !loading && (
             <div className="apt-banner apt-banner-error">
-              You're not linked to any clinic yet — join or create one from your
-              profile page first.
+              {t("doctorDashboard.noClinic")}
             </div>
           )}
 
@@ -167,18 +171,18 @@ export default function DoctorDashboard() {
 
               <div className="card">
                 <div className="card-header">
-                  <h2 className="card-title">Today's Appointments Preview</h2>
+                  <h2 className="card-title">{t("doctorDashboard.todaysAppointmentsPreview")}</h2>
                   <Link to="/appointments" className="card-link">
-                    View Full Schedule
+                    {t("doctorDashboard.viewFullSchedule")}
                   </Link>
                 </div>
 
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Patient</th>
-                      <th>Time</th>
-                      <th>Status</th>
+                      <th>{t("doctorDashboard.patient")}</th>
+                      <th>{t("doctorDashboard.time")}</th>
+                      <th>{t("doctorDashboard.status")}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -193,7 +197,7 @@ export default function DoctorDashboard() {
                             color: "var(--text-muted)",
                           }}
                         >
-                          Loading…
+                          {t("doctorDashboard.loading")}
                         </td>
                       </tr>
                     )}
@@ -207,7 +211,7 @@ export default function DoctorDashboard() {
                             color: "var(--text-muted)",
                           }}
                         >
-                          No appointments today at this clinic.
+                          {t("doctorDashboard.noAppointmentsToday")}
                         </td>
                       </tr>
                     )}
@@ -228,7 +232,7 @@ export default function DoctorDashboard() {
                                   {apt.patient?.name || "—"}
                                 </div>
                                 <div className="patient-id">
-                                  ID: {apt.patient?.id ?? "—"}
+                                  {t("doctorDashboard.id")}: {apt.patient?.id ?? "—"}
                                 </div>
                               </div>
                             </div>
@@ -248,7 +252,7 @@ export default function DoctorDashboard() {
                                 })
                               }
                             >
-                              View
+                              {t("doctorDashboard.view")}
                             </button>
                           </td>
                         </tr>

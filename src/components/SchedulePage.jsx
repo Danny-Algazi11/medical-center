@@ -3,6 +3,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 import "./styles/Schedule.css";
 import {
@@ -24,23 +25,23 @@ import {
 } from "../api/Schedule";
 
 // day_of_week follows the backend's Carbon convention: 0=Sunday..6=Saturday.
-const DAY_LABELS = {
-  0: "Sunday",
-  1: "Monday",
-  2: "Tuesday",
-  3: "Wednesday",
-  4: "Thursday",
-  5: "Friday",
-  6: "Saturday",
+const DAY_KEYS = {
+  0: "sunday",
+  1: "monday",
+  2: "tuesday",
+  3: "wednesday",
+  4: "thursday",
+  5: "friday",
+  6: "saturday",
 };
 // Displayed Monday-first, Sunday last, matching the mockup.
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const WEEKDAY_IDS = [1, 2, 3, 4, 5]; // Mon-Fri, for "Apply to all weekdays"
 
 const SESSION_DEFS = [
-  { key: "morning", label: "Morning", defaults: ["08:00", "12:00"] },
-  { key: "afternoon", label: "Afternoon", defaults: ["14:00", "18:00"] },
-  { key: "evening", label: "Evening", defaults: ["18:00", "21:00"] },
+  { key: "morning", labelKey: "schedule.morning", defaults: ["08:00", "12:00"] },
+  { key: "afternoon", labelKey: "schedule.afternoon", defaults: ["14:00", "18:00"] },
+  { key: "evening", labelKey: "schedule.evening", defaults: ["18:00", "21:00"] },
 ];
 
 function emptyDay(dow) {
@@ -56,7 +57,7 @@ function emptyDay(dow) {
 }
 
 function emptyWeek() {
-  return Object.keys(DAY_LABELS).map((d) => emptyDay(Number(d)));
+  return Object.keys(DAY_KEYS).map((d) => emptyDay(Number(d)));
 }
 
 function emptyForm() {
@@ -169,6 +170,7 @@ function previewSlots(form) {
 export default function SchedulePage() {
   const { user } = useAuth();
   const role = user?.role; // "doctor" | "receptionist"
+  const { t } = useTranslation();
 
   // ── Doctor context: which clinic — now shared globally via the Topbar
   // selector instead of a page-local dropdown, so it stays in sync with
@@ -432,7 +434,7 @@ export default function SchedulePage() {
         setForm(configToForm(refreshed));
       }
       setDirty(false);
-      setSaveNotice("Schedule saved.");
+      setSaveNotice(t("schedule.scheduleSaved"));
     } catch (err) {
       setSaveError(
         err.errors
@@ -461,7 +463,7 @@ export default function SchedulePage() {
       setSaveNotice(
         result.affected_bookings > 0
           ? `Vacation activated. ${result.affected_bookings} existing booking(s) overlap and need manual attention.`
-          : "Vacation mode activated.",
+          : t("schedule.vacationActivated"),
       );
     } catch (err) {
       setVacationError(
@@ -519,7 +521,7 @@ export default function SchedulePage() {
       setSaveNotice(
         result.affected_bookings > 0
           ? `Time blocked. Warning: ${result.affected_bookings} existing booking(s) overlap and need manual attention.`
-          : "Time blocked.",
+          : t("schedule.timeBlocked"),
       );
     } catch (err) {
       setBlockError(
@@ -577,22 +579,19 @@ export default function SchedulePage() {
     <div className="layout-shell">
       <Sidebar />
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
         <main className="page-content">
           <div className="page-header">
             <div className="page-header-left">
-              <h1>Schedule Management</h1>
-              <p>
-                Configure weekly consultation availability and slot generation
-                rules.
-              </p>
+              <h1>{t("schedule.title")}</h1>
+              <p>{t("schedule.subtitle")}</p>
             </div>
 
             {role === "receptionist" && (
               <div className="sch-context-switcher">
-                <span className="sch-context-badge">Receptionist View</span>
+                <span className="sch-context-badge">{t("schedule.receptionistView")}</span>
                 <div className="sch-field">
-                  <label className="sch-label">Managing schedule for</label>
+                  <label className="sch-label">{t("schedule.managingScheduleFor")}</label>
                   <select
                     className="sch-input"
                     value={doctorId || ""}
@@ -641,14 +640,14 @@ export default function SchedulePage() {
                   onClick={handleDiscard}
                   disabled={saving || !dirty}
                 >
-                  Discard Changes
+                  {t("schedule.discardChanges")}
                 </button>
                 <button
                   className="btn-dark"
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving ? "Saving…" : "Save Schedule"}
+                  {saving ? t("schedule.saving") : t("schedule.saveSchedule")}
                 </button>
               </div>
 
@@ -659,23 +658,22 @@ export default function SchedulePage() {
                     <div className="card-header">
                       <h2 className="card-title">
                         <i className="ti ti-calendar-week" aria-hidden="true" />{" "}
-                        Weekly Availability
+                        {t("schedule.weeklyAvailability")}
                       </h2>
                       <div className="sch-week-header-actions">
                         <button className="btn-ghost" onClick={applyToWeekdays}>
-                          <i className="ti ti-copy" aria-hidden="true" /> Apply
-                          to all weekdays
+                          <i className="ti ti-copy" aria-hidden="true" /> {t("schedule.applyToWeekdays")}
                         </button>
                         {role === "doctor" && (
                           <div className="sch-vacation-toggle">
                             <span
                               className={isOnVacation ? "sch-vacation-on" : ""}
                             >
-                              Vacation Mode
+                              {t("schedule.vacationMode")}
                               {!isOnVacation && showVacationPanel && (
                                 <em className="sch-vacation-pending">
                                   {" "}
-                                  — pick dates below
+                                  {t("schedule.pickDatesBelow")}
                                 </em>
                               )}
                             </span>
@@ -709,7 +707,7 @@ export default function SchedulePage() {
                           onSubmit={handleActivateVacation}
                         >
                           <div className="sch-field">
-                            <label className="sch-label">Start date</label>
+                            <label className="sch-label">{t("schedule.startDate")}</label>
                             <input
                               type="date"
                               className="sch-input"
@@ -724,7 +722,7 @@ export default function SchedulePage() {
                             />
                           </div>
                           <div className="sch-field">
-                            <label className="sch-label">End date</label>
+                            <label className="sch-label">{t("schedule.endDate")}</label>
                             <input
                               type="date"
                               className="sch-input"
@@ -750,8 +748,8 @@ export default function SchedulePage() {
                               disabled={vacationSaving}
                             >
                               {vacationSaving
-                                ? "Activating…"
-                                : "Activate vacation"}
+                                ? t("schedule.activating")
+                                : t("schedule.activateVacation")}
                             </button>
                             <button
                               type="button"
@@ -759,7 +757,7 @@ export default function SchedulePage() {
                               onClick={() => setShowVacationPanel(false)}
                               disabled={vacationSaving}
                             >
-                              Cancel
+                              {t("schedule.cancel")}
                             </button>
                           </div>
                         </form>
@@ -790,12 +788,12 @@ export default function SchedulePage() {
                                   checked={day.active}
                                   onChange={() => toggleDay(dow)}
                                 />
-                                <span>{DAY_LABELS[dow]}</span>
+                                <span>{t(`schedule.${DAY_KEYS[dow]}`)}</span>
                               </label>
                               <button
                                 type="button"
                                 className="sch-icon-btn"
-                                aria-label={`Clear ${DAY_LABELS[dow]}`}
+                                aria-label={`Clear ${t(`schedule.${DAY_KEYS[dow]}`)}`}
                                 onClick={() => removeDay(dow)}
                               >
                                 <i className="ti ti-trash" aria-hidden="true" />
@@ -804,7 +802,7 @@ export default function SchedulePage() {
 
                             {day.active ? (
                               <div className="sch-sessions">
-                                {SESSION_DEFS.map(({ key, label }) => {
+                                {SESSION_DEFS.map(({ key, labelKey }) => {
                                   const session = day.sessions[key];
                                   return (
                                     <div className="sch-session" key={key}>
@@ -816,7 +814,7 @@ export default function SchedulePage() {
                                             toggleSession(dow, key)
                                           }
                                         />
-                                        {label.toUpperCase()}
+                                        {t(labelKey).toUpperCase()}
                                       </label>
                                       <div className="sch-time-range">
                                         <input
@@ -855,7 +853,7 @@ export default function SchedulePage() {
                               </div>
                             ) : (
                               <div className="sch-day-closed">
-                                Clinic closed - No slots generated
+                                {t("schedule.clinicClosed")}
                               </div>
                             )}
                           </div>
@@ -866,13 +864,13 @@ export default function SchedulePage() {
 
                   <div className="card sch-blocked-card">
                     <div className="card-header">
-                      <h2 className="card-title">Blocked Times</h2>
+                      <h2 className="card-title">{t("schedule.blockedTimes")}</h2>
                       <button
                         className="btn-outline"
                         onClick={() => setShowBlockPanel((v) => !v)}
                       >
                         <i className="ti ti-forbid-2" aria-hidden="true" />{" "}
-                        Block Time
+                        {t("schedule.blockTime")}
                       </button>
                     </div>
 
@@ -893,7 +891,7 @@ export default function SchedulePage() {
                                 }))
                               }
                             />
-                            Every week on a day
+                            {t("schedule.everyWeekOn")}
                           </label>
                           <label>
                             <input
@@ -903,13 +901,13 @@ export default function SchedulePage() {
                                 setBlockForm((f) => ({ ...f, mode: "date" }))
                               }
                             />
-                            One specific date
+                            {t("schedule.oneSpecificDate")}
                           </label>
                         </div>
 
                         {blockForm.mode === "recurring" ? (
                           <div className="sch-field">
-                            <label className="sch-label">Day</label>
+                            <label className="sch-label">{t("schedule.day")}</label>
                             <select
                               className="sch-input"
                               value={blockForm.day_of_week}
@@ -922,14 +920,14 @@ export default function SchedulePage() {
                             >
                               {DISPLAY_ORDER.map((dow) => (
                                 <option key={dow} value={dow}>
-                                  {DAY_LABELS[dow]}
+                                  {t(`schedule.${DAY_KEYS[dow]}`)}
                                 </option>
                               ))}
                             </select>
                           </div>
                         ) : (
                           <div className="sch-field">
-                            <label className="sch-label">Date</label>
+                            <label className="sch-label">{t("schedule.date")}</label>
                             <input
                               type="date"
                               className="sch-input"
@@ -947,7 +945,7 @@ export default function SchedulePage() {
 
                         <div className="sch-grid-2">
                           <div className="sch-field">
-                            <label className="sch-label">Start time</label>
+                            <label className="sch-label">{t("schedule.startTime")}</label>
                             <input
                               type="time"
                               className="sch-input"
@@ -962,7 +960,7 @@ export default function SchedulePage() {
                             />
                           </div>
                           <div className="sch-field">
-                            <label className="sch-label">End time</label>
+                            <label className="sch-label">{t("schedule.endTime")}</label>
                             <input
                               type="time"
                               className="sch-input"
@@ -979,7 +977,7 @@ export default function SchedulePage() {
                         </div>
 
                         <div className="sch-field">
-                          <label className="sch-label">Reason (optional)</label>
+                          <label className="sch-label">{t("schedule.reasonOptional")}</label>
                           <input
                             type="text"
                             className="sch-input"
@@ -1004,7 +1002,7 @@ export default function SchedulePage() {
                             className="btn-dark"
                             disabled={blockSaving}
                           >
-                            {blockSaving ? "Blocking…" : "Block this time"}
+                            {blockSaving ? t("schedule.blocking") : t("schedule.blockThisTime")}
                           </button>
                           <button
                             type="button"
@@ -1012,21 +1010,21 @@ export default function SchedulePage() {
                             onClick={() => setShowBlockPanel(false)}
                             disabled={blockSaving}
                           >
-                            Cancel
+                            {t("schedule.cancel")}
                           </button>
                         </div>
                       </form>
                     )}
 
                     {blockedTimes.length === 0 ? (
-                      <p className="sch-note">No blocked times.</p>
+                      <p className="sch-note">{t("schedule.noBlockedTimes")}</p>
                     ) : (
                       <ul className="sch-blocked-list">
                         {blockedTimes.map((b) => (
                           <li key={b.id}>
                             <div>
                               <strong>
-                                {b.block_date || DAY_LABELS[b.day_of_week]}
+                                {b.block_date || t(`schedule.${DAY_KEYS[b.day_of_week]}`)}
                               </strong>{" "}
                               {b.start_time}–{b.end_time}
                               {b.reason && (
@@ -1057,13 +1055,13 @@ export default function SchedulePage() {
                     <div className="card-header">
                       <h2 className="card-title">
                         <i className="ti ti-adjustments" aria-hidden="true" />{" "}
-                        Slot Settings
+                        {t("schedule.slotSettings")}
                       </h2>
                       <button
                         className="btn-outline"
                         onClick={() => setShowGeneratePanel((v) => !v)}
                       >
-                        Generate Slots
+                        {t("schedule.generateSlots")}
                       </button>
                     </div>
 
@@ -1078,7 +1076,7 @@ export default function SchedulePage() {
                           Save your schedule first if you've changed anything.
                         </p>
                         <div className="sch-field">
-                          <label className="sch-label">From</label>
+                          <label className="sch-label">{t("schedule.from")}</label>
                           <input
                             type="date"
                             className="sch-input"
@@ -1093,7 +1091,7 @@ export default function SchedulePage() {
                           />
                         </div>
                         <div className="sch-field">
-                          <label className="sch-label">To</label>
+                          <label className="sch-label">{t("schedule.to")}</label>
                           <input
                             type="date"
                             className="sch-input"
@@ -1118,7 +1116,7 @@ export default function SchedulePage() {
                             className="btn-dark"
                             disabled={generateSaving}
                           >
-                            {generateSaving ? "Generating…" : "Generate"}
+                            {generateSaving ? t("schedule.generating") : t("schedule.generate")}
                           </button>
                           <button
                             type="button"
@@ -1126,7 +1124,7 @@ export default function SchedulePage() {
                             onClick={() => setShowGeneratePanel(false)}
                             disabled={generateSaving}
                           >
-                            Cancel
+                            {t("schedule.cancel")}
                           </button>
                         </div>
                       </form>
@@ -1134,7 +1132,7 @@ export default function SchedulePage() {
 
                     <div className="sch-settings-body">
                       <div className="sch-settings-label">
-                        Consultation duration
+                        {t("schedule.consultationDuration")}
                       </div>
                       <div className="sch-duration-presets">
                         {[15, 20, 30, 60].map((mins) => (
@@ -1169,7 +1167,7 @@ export default function SchedulePage() {
                       <div className="sch-grid-2" style={{ marginTop: 16 }}>
                         <div className="sch-field">
                           <label className="sch-label">
-                            Break duration (min)
+                            {t("schedule.breakDuration")}
                           </label>
                           <input
                             type="number"
@@ -1183,7 +1181,7 @@ export default function SchedulePage() {
                           />
                         </div>
                         <div className="sch-field">
-                          <label className="sch-label">Max patients</label>
+                          <label className="sch-label">{t("schedule.maxPatients")}</label>
                           <input
                             type="number"
                             min="1"
@@ -1197,7 +1195,7 @@ export default function SchedulePage() {
                       </div>
 
                       <label className="sch-buffer-toggle">
-                        <span>Buffer between appointments</span>
+                        <span>{t("schedule.bufferToggle")}</span>
                         <input
                           type="checkbox"
                           checked={form.buffer_enabled}
@@ -1212,21 +1210,19 @@ export default function SchedulePage() {
                   <div className="card sch-preview-card">
                     <div className="card-header">
                       <h2 className="card-title">
-                        <i className="ti ti-eye" aria-hidden="true" /> Slots
-                        Preview
+                        <i className="ti ti-eye" aria-hidden="true" /> {t("schedule.slotsPreview")}
                       </h2>
                       <span className="sch-generated-badge">
-                        Generated: {preview.weeklyTotal}
+                        {t("schedule.generated")}: {preview.weeklyTotal}
                       </span>
                     </div>
                     <div className="sch-preview-body">
                       {preview.dayTotal === 0 ? (
                         <p className="sch-note">
-                          Turn on a day and at least one session to see a
-                          preview.
+                          {t("schedule.previewHint")}
                         </p>
                       ) : (
-                        SESSION_DEFS.map(({ key, label }) => {
+                        SESSION_DEFS.map(({ key, labelKey }) => {
                           const times = preview.bySession[key];
                           if (!times.length) return null;
                           const first = times[0];
@@ -1234,15 +1230,15 @@ export default function SchedulePage() {
                           return (
                             <div className="sch-preview-session" key={key}>
                               <div className="sch-preview-session-header">
-                                <span>{label.toUpperCase()} SESSION</span>
+                                <span>{t(labelKey).toUpperCase()} SESSION</span>
                                 <span>
                                   {first} - {last}
                                 </span>
                               </div>
                               <div className="sch-preview-pills">
-                                {times.map((t) => (
-                                  <span className="sch-pill" key={t}>
-                                    {t}
+                                {times.map((time) => (
+                                  <span className="sch-pill" key={time}>
+                                    {time}
                                   </span>
                                 ))}
                               </div>
@@ -1263,7 +1259,7 @@ export default function SchedulePage() {
             </>
           )}
 
-          {loading && <p className="sch-note">Loading schedule…</p>}
+          {loading && <p className="sch-note">{t("schedule.loadingSchedule")}</p>}
         </main>
       </div>
     </div>

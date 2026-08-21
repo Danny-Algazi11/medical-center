@@ -38,9 +38,24 @@ export const addPrescriptionItem = async (appointmentId, payload) => {
   return response.data.data;
 };
 
+// POST .../encounter/submit — batch endpoint (SubmitEncounterRequest).
+// Takes notes/diagnoses/prescription_items together in one request instead
+// of three separate calls. Each section is optional on its own, but at
+// least one of the three must be non-empty. Returns the full
+// EncounterResource (id, clinical_notes, diagnoses, prescription) in one
+// shot, unlike the per-item endpoints above which each only return their
+// own new row.
+// payload: { notes?: [{content}], diagnoses?: [{label, description?}],
+//            prescription_items?: [{drug_name, form?, strength?, dosage?,
+//            frequency?, duration?, route?, notes?}] }
+export const submitEncounter = async (appointmentId, payload) => {
+  const response = await api.post(
+    `/doctor/appointments/${appointmentId}/encounter/submit`,
+    payload,
+  );
+  return response.data.data;
+};
+
 // Writing is only permitted while the appointment is exactly "in_progress"
 // (EncounterService::ensureCanWrite) — not "checked_in", even though read
-// access covers both. There's also a batch POST .../encounter/submit that
-// accepts notes/diagnoses/prescription_items all in one request instead of
-// three separate calls — not used here in favor of the more natural
-// incremental per-item flow, but available if ever needed.
+// access covers both.

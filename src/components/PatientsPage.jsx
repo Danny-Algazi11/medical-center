@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 import "./styles/Patients.css";
 import "./styles/Appointments.css";
@@ -15,11 +16,11 @@ function initialsOf(name) {
   return `${first}${last}`.toUpperCase() || "?";
 }
 
-function PatientPanel({ patient, onClose, onBook }) {
+function PatientPanel({ patient, onClose, onBook, t }) {
   return (
     <aside className="patient-panel">
       <div className="panel-header">
-        <h3>Patient Overview</h3>
+        <h3>{t("patients.patientOverview")}</h3>
         <button
           className="panel-close"
           onClick={onClose}
@@ -32,7 +33,7 @@ function PatientPanel({ patient, onClose, onBook }) {
       <div className="panel-avatar-section">
         <div className="panel-avatar">{initialsOf(patient.name)}</div>
         <h2 className="panel-patient-name">{patient.name}</h2>
-        <p className="panel-patient-meta">Patient #{patient.id}</p>
+        <p className="panel-patient-meta">{t("patients.patientHash")}{patient.id}</p>
       </div>
 
       <div className="panel-section">
@@ -41,7 +42,7 @@ function PatientPanel({ patient, onClose, onBook }) {
             <i className="ti ti-phone" aria-hidden="true" />
           </div>
           <div>
-            <div className="panel-section-label">Phone</div>
+            <div className="panel-section-label">{t("patients.phone")}</div>
             <div className="panel-section-value">{patient.phone || "—"}</div>
           </div>
         </div>
@@ -53,7 +54,7 @@ function PatientPanel({ patient, onClose, onBook }) {
             <i className="ti ti-id" aria-hidden="true" />
           </div>
           <div>
-            <div className="panel-section-label">ID Card Number</div>
+            <div className="panel-section-label">{t("patients.idCardNumber")}</div>
             <div className="panel-section-value">
               {patient.id_card_number || "—"}
             </div>
@@ -67,7 +68,7 @@ function PatientPanel({ patient, onClose, onBook }) {
             <i className="ti ti-gender-bigender" aria-hidden="true" />
           </div>
           <div>
-            <div className="panel-section-label">Gender</div>
+            <div className="panel-section-label">{t("patients.gender")}</div>
             <div className="panel-section-value">{patient.gender || "—"}</div>
           </div>
         </div>
@@ -79,7 +80,7 @@ function PatientPanel({ patient, onClose, onBook }) {
             <i className="ti ti-cake" aria-hidden="true" />
           </div>
           <div>
-            <div className="panel-section-label">Date of birth</div>
+            <div className="panel-section-label">{t("patients.dob")}</div>
             <div className="panel-section-value">{patient.dob || "—"}</div>
           </div>
         </div>
@@ -89,22 +90,19 @@ function PatientPanel({ patient, onClose, onBook }) {
         <div className="panel-actions-row">
           <button className="btn-full dark" onClick={() => onBook(patient)}>
             <i className="ti ti-calendar-plus" aria-hidden="true" />
-            Book Appointment
+            {t("patients.bookAppointment")}
           </button>
         </div>
       </div>
 
-      <p className="panel-note">
-        This is everything the search returns — the full medical chart
-        (allergies, conditions, history) is only visible to the treating doctor
-        through a specific appointment, not from this directory.
-      </p>
+      <p className="panel-note">{t("patients.chartNote")}</p>
     </aside>
   );
 }
 
 export default function PatientsPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [results, setResults] = useState([]);
@@ -143,7 +141,7 @@ export default function PatientsPage() {
     <div className="layout-shell">
       <Sidebar />
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search patients by name, phone, or ID..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
         <main className="page-content">
           <div className="patients-toolbar">
             <div>
@@ -156,7 +154,7 @@ export default function PatientsPage() {
                   color: "var(--text-primary)",
                 }}
               >
-                Patient Directory
+                {t("patients.directoryTitle")}
               </h1>
               <p
                 style={{
@@ -166,7 +164,7 @@ export default function PatientsPage() {
                   fontWeight: 300,
                 }}
               >
-                Search for a patient by name, phone, or ID card number.
+                {t("patients.directorySub")}
               </p>
             </div>
           </div>
@@ -178,7 +176,7 @@ export default function PatientsPage() {
             <i className="ti ti-search" aria-hidden="true" />
             <input
               type="text"
-              placeholder="Type at least 2 characters..."
+              placeholder={t("patients.searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -194,11 +192,11 @@ export default function PatientsPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Patient</th>
-                    <th>Phone</th>
-                    <th>ID Card Number</th>
-                    <th>Gender</th>
-                    <th>Date of birth</th>
+                    <th>{t("reception.patient")}</th>
+                    <th>{t("patients.phone")}</th>
+                    <th>{t("patients.idCardNumber")}</th>
+                    <th>{t("patients.gender")}</th>
+                    <th>{t("patients.dob")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -253,7 +251,7 @@ export default function PatientsPage() {
                             color: "var(--text-muted)",
                           }}
                         >
-                          No patients found.
+                          {t("patients.noPatientsFound")}
                         </td>
                       </tr>
                     )}
@@ -267,8 +265,7 @@ export default function PatientsPage() {
                           color: "var(--text-muted)",
                         }}
                       >
-                        Start typing a name, phone number, or ID card number
-                        above to search.
+                        {t("patients.startTyping")}
                       </td>
                     </tr>
                   )}
@@ -282,7 +279,7 @@ export default function PatientsPage() {
                           color: "var(--text-muted)",
                         }}
                       >
-                        Searching…
+                        {t("patients.searching")}
                       </td>
                     </tr>
                   )}
@@ -295,6 +292,7 @@ export default function PatientsPage() {
                 patient={selected}
                 onClose={() => setSelected(null)}
                 onBook={handleBook}
+                t={t}
               />
             )}
           </div>

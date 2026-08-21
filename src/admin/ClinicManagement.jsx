@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   getClinics,
   createClinic,
@@ -58,6 +59,7 @@ const MODAL_INIT = { name: "", phone: "", address: "", latitude: "", longitude: 
 
 export default function ClinicManagement() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [clinics, setClinics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -197,14 +199,14 @@ export default function ClinicManagement() {
       <AdminSidebar />
       <div className="adm-main">
         <AdminTopbar
-          title="Clinic Management"
-          searchPlaceholder="Search clinics..."
+          title={t("admin.clinicManagement")}
+          searchPlaceholder={t("adminCommon.searchClinics")}
         />
         <div className="adm-content">
           <div className="adm-page-header">
             <div className="adm-page-header-left">
-              <h1>Clinic management</h1>
-              <p>Review, approve, suspend, or reactivate clinic branches.</p>
+              <h1>{t("clinicManagement.title")}</h1>
+              <p>{t("clinicManagement.subtitle")}</p>
             </div>
             <div className="adm-header-actions">
               <button
@@ -212,8 +214,7 @@ export default function ClinicManagement() {
                 className="adm-btn adm-btn-dark"
                 onClick={() => setShowModal(true)}
               >
-                <i className="ti ti-building-plus" aria-hidden="true" /> New
-                clinic
+                <i className="ti ti-building-plus" aria-hidden="true" /> {t("clinicManagement.newClinic")}
               </button>
             </div>
           </div>
@@ -244,22 +245,22 @@ export default function ClinicManagement() {
           >
             {[
               {
-                label: "Total clinics",
+                label: t("clinicManagement.totalClinics"),
                 num: counts.total,
                 color: "var(--adm-text-primary)",
               },
               {
-                label: "Active",
+                label: t("adminCommon.active"),
                 num: counts.active,
                 color: "var(--adm-green)",
               },
               {
-                label: "Pending",
+                label: t("adminCommon.pending"),
                 num: counts.pending,
                 color: "var(--adm-amber)",
               },
               {
-                label: "Suspended",
+                label: t("adminCommon.suspended"),
                 num: counts.suspended,
                 color: "var(--adm-red)",
               },
@@ -283,14 +284,22 @@ export default function ClinicManagement() {
                 style={{ padding: "6px 14px", fontSize: 12 }}
                 onClick={() => setFilter(f)}
               >
-                {f}
+                {f === "All"
+                  ? t("adminCommon.all")
+                  : f === "Pending"
+                    ? t("adminCommon.pending")
+                    : f === "Active"
+                      ? t("adminCommon.active")
+                      : f === "Rejected"
+                        ? t("adminCommon.rejected")
+                        : t("adminCommon.suspended")}
               </button>
             ))}
           </div>
 
           {loading && (
             <div style={{ textAlign: "center", padding: "40px" }}>
-              <p>Loading clinics...</p>
+              <p>{t("clinicManagement.loadingClinics")}</p>
             </div>
           )}
 
@@ -299,11 +308,11 @@ export default function ClinicManagement() {
               <table className="adm-table">
                 <thead>
                   <tr>
-                    <th>Clinic</th>
-                    <th>Address</th>
-                    <th>Owner</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
+                    <th>{t("clinicManagement.clinic")}</th>
+                    <th>{t("clinicManagement.address")}</th>
+                    <th>{t("clinicManagement.owner")}</th>
+                    <th>{t("clinicManagement.status")}</th>
+                    <th style={{ textAlign: "right" }}>{t("clinicManagement.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -366,7 +375,7 @@ export default function ClinicManagement() {
                                   onClick={() => handleApprove(c.id)}
                                   disabled={actionLoading === c.id}
                                 >
-                                  {actionLoading === c.id ? "..." : "Approve"}
+                                  {actionLoading === c.id ? "..." : t("adminCommon.approve")}
                                 </button>
                                 <button
                                   className="adm-btn adm-btn-red"
@@ -374,7 +383,7 @@ export default function ClinicManagement() {
                                   onClick={() => handleReject(c.id)}
                                   disabled={actionLoading === c.id}
                                 >
-                                  {actionLoading === c.id ? "..." : "Reject"}
+                                  {actionLoading === c.id ? "..." : t("adminCommon.reject")}
                                 </button>
                               </>
                             )}
@@ -385,7 +394,7 @@ export default function ClinicManagement() {
                                 onClick={() => handleSuspend(c.id)}
                                 disabled={actionLoading === c.id}
                               >
-                                {actionLoading === c.id ? "..." : "Suspend"}
+                                {actionLoading === c.id ? "..." : t("adminCommon.suspend")}
                               </button>
                             )}
                             {c.apiStatus === "suspended" && (
@@ -397,7 +406,7 @@ export default function ClinicManagement() {
                               >
                                 {actionLoading === c.id
                                   ? "..."
-                                  : "Reactivate"}
+                                  : t("adminCommon.reactivate")}
                               </button>
                             )}
                             {c.apiStatus === "rejected" && (
@@ -407,7 +416,7 @@ export default function ClinicManagement() {
                                   color: "var(--adm-text-muted)",
                                 }}
                               >
-                                No actions available
+                                {t("clinicManagement.noActionsAvailable")}
                               </span>
                             )}
                           </div>
@@ -420,14 +429,14 @@ export default function ClinicManagement() {
                         colSpan="5"
                         style={{ textAlign: "center", padding: "20px" }}
                       >
-                        No clinics found
+                        {t("clinicManagement.noClinicsFound")}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
               <div className="adm-table-footer">
-                <span>Showing {filtered.length} of {clinics.length} clinics</span>
+                <span>{t("clinicManagement.showing")} {filtered.length} {t("clinicManagement.of")} {clinics.length} {t("clinicManagement.totalClinics")}</span>
               </div>
             </div>
           )}
@@ -442,8 +451,8 @@ export default function ClinicManagement() {
           <div className="adm-modal">
             <div className="adm-modal-header">
               <div>
-                <h2>Create new clinic</h2>
-                <p>Add a new branch to the MediCenter network.</p>
+                <h2>{t("clinicManagement.createNewClinic")}</h2>
+                <p>{t("clinicManagement.createClinicDesc")}</p>
               </div>
               <button
                 type="button"
@@ -458,7 +467,7 @@ export default function ClinicManagement() {
               <div className="adm-modal-body">
                 <div className="adm-field">
                   <label htmlFor="clinic-name" className="adm-label">
-                    Clinic name
+                    {t("clinicManagement.clinicName")}
                   </label>
                   <input
                     id="clinic-name"
@@ -472,7 +481,7 @@ export default function ClinicManagement() {
                 </div>
                 <div className="adm-field">
                   <label htmlFor="clinic-phone" className="adm-label">
-                    Phone
+                    {t("clinicManagement.phone")}
                   </label>
                   <input
                     id="clinic-phone"
@@ -485,7 +494,7 @@ export default function ClinicManagement() {
                 </div>
                 <div className="adm-field">
                   <label htmlFor="clinic-address" className="adm-label">
-                    Address
+                    {t("clinicManagement.address2")}
                   </label>
                   <input
                     id="clinic-address"
@@ -506,7 +515,7 @@ export default function ClinicManagement() {
                 >
                   <div className="adm-field">
                     <label htmlFor="clinic-lat" className="adm-label">
-                      Latitude (optional)
+                      {t("clinicManagement.latitudeOptional")}
                     </label>
                     <input
                       id="clinic-lat"
@@ -519,7 +528,7 @@ export default function ClinicManagement() {
                   </div>
                   <div className="adm-field">
                     <label htmlFor="clinic-lng" className="adm-label">
-                      Longitude (optional)
+                      {t("clinicManagement.longitudeOptional")}
                     </label>
                     <input
                       id="clinic-lng"
@@ -538,14 +547,14 @@ export default function ClinicManagement() {
                   className="adm-btn adm-btn-outline"
                   onClick={() => setShowModal(false)}
                 >
-                  Cancel
+                  {t("adminCommon.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="adm-btn adm-btn-dark"
                   disabled={actionLoading === "add"}
                 >
-                  {actionLoading === "add" ? "Creating..." : "Create clinic"}
+                  {actionLoading === "add" ? t("clinicManagement.creating") : t("clinicManagement.createClinic")}
                 </button>
               </div>
             </form>

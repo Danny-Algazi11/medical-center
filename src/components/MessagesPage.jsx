@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 import "./styles/Messages.css";
 
@@ -205,6 +206,7 @@ function MessageBubble({ msg }) {
 
 /* ── Main page ─────────────────────────────────────────── */
 export default function MessagesPage() {
+  const { t } = useTranslation();
   const [activeThread, setActiveThread] = useState(THREADS[0]);
   const [inboxFilter, setInboxFilter] = useState("All");
   const [input, setInput] = useState("");
@@ -259,7 +261,7 @@ export default function MessagesPage() {
         <Topbar
           user={CURRENT_USER}
           tabs={TABS}
-          searchPlaceholder="Search patients..."
+          searchPlaceholder={t("topbar.searchDefault")}
         />
 
         {/* Full-height messages layout — no page-content padding */}
@@ -268,17 +270,21 @@ export default function MessagesPage() {
           <div className="inbox-panel">
             <div className="inbox-header">
               <div className="inbox-title-row">
-                <span className="inbox-title">Inbox</span>
+                <span className="inbox-title">{t("messages.inbox")}</span>
                 <span className="inbox-badge">12 Active</span>
               </div>
               <div className="inbox-filter-tabs">
-                {["All", "Unread", "Follow-up"].map((f) => (
+                {[
+                  { value: "All", label: t("messages.all") },
+                  { value: "Unread", label: t("messages.unread") },
+                  { value: "Follow-up", label: t("messages.followUp") },
+                ].map((f) => (
                   <button
-                    key={f}
-                    className={`inbox-filter-tab${inboxFilter === f ? " active" : ""}`}
-                    onClick={() => setInboxFilter(f)}
+                    key={f.value}
+                    className={`inbox-filter-tab${inboxFilter === f.value ? " active" : ""}`}
+                    onClick={() => setInboxFilter(f.value)}
                   >
-                    {f}
+                    {f.label}
                   </button>
                 ))}
               </div>
@@ -333,12 +339,12 @@ export default function MessagesPage() {
                           className="ti ti-calendar-event"
                           aria-hidden="true"
                         />
-                        Upcoming: {current.meta.upcoming}
+                        {t("messages.upcoming")}: {current.meta.upcoming}
                       </span>
                     )}
                     <span className="chat-meta-item">
                       <i className="ti ti-clock" aria-hidden="true" />
-                      Last Visit: {current.meta.lastVisit}
+                      {t("messages.lastVisit")}: {current.meta.lastVisit}
                     </span>
                   </div>
                 </div>
@@ -346,15 +352,15 @@ export default function MessagesPage() {
               <div className="chat-topbar-actions">
                 <button className="chat-action-btn">
                   <i className="ti ti-user" aria-hidden="true" />
-                  Patient Profile
+                  {t("messages.patientProfile")}
                 </button>
                 <button className="chat-action-btn">
                   <i className="ti ti-file-medical" aria-hidden="true" />
-                  Medical Records
+                  {t("messages.medicalRecords")}
                 </button>
                 <button className="chat-action-btn dark">
                   <i className="ti ti-player-play" aria-hidden="true" />
-                  Open Workflow
+                  {t("messages.openWorkflow")}
                 </button>
               </div>
             </div>
@@ -391,7 +397,7 @@ export default function MessagesPage() {
               <input
                 className="compose-input"
                 type="text"
-                placeholder="Type a secure medical message..."
+                placeholder={t("messages.messagePlaceholder")}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKey}

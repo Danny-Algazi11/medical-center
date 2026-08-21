@@ -6,6 +6,8 @@ import {
   verifyEmailCode,
   resendCode,
 } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/SignupPage.css";
 
 /* ── Departments with IDs sent to API ──────────────────── */
@@ -26,13 +28,11 @@ const DEPARTMENTS = [
   { id: 14, name: "Internal Medicine" },
 ];
 
-const STEPS = ["Basic info", "Verify email", "Complete profile"];
-
 /* ── Progress bar ──────────────────────────────────────── */
-function ProgressBar({ step }) {
+function ProgressBar({ step, steps }) {
   return (
     <div className="signup-progress">
-      {STEPS.map((label, i) => (
+      {steps.map((label, i) => (
         <div className="signup-step-item" key={label}>
           <div
             className={`signup-step-circle${step === i ? " active" : step > i ? " done" : ""}`}
@@ -52,7 +52,7 @@ function ProgressBar({ step }) {
           >
             {label}
           </span>
-          {i < STEPS.length - 1 && (
+          {i < steps.length - 1 && (
             <div className={`signup-step-line${step > i ? " done" : ""}`} />
           )}
         </div>
@@ -69,6 +69,7 @@ function UploadField({
   onChange,
   files = [],
   accept = "image/*,.pdf",
+  uploadHint,
 }) {
   return (
     <div className="signup-field">
@@ -83,9 +84,7 @@ function UploadField({
         <div className="signup-upload-icon">
           <i className="ti ti-cloud-upload" aria-hidden="true" />
         </div>
-        <div className="signup-upload-label">
-          Click to upload or drag & drop
-        </div>
+        <div className="signup-upload-label">{uploadHint}</div>
         <div className="signup-upload-sub">{hint}</div>
         {files.length > 0 && (
           <div className="signup-upload-files">
@@ -157,6 +156,10 @@ function OTPInput({ value, onChange }) {
 /* ── Main component ────────────────────────────────────── */
 export default function SignupPage() {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+  const { t } = useTranslation();
+
+  const STEPS = [t("signup.stepBasic"), t("signup.stepVerify"), t("signup.stepComplete")];
 
   // ── State ──
   const [role, setRole] = useState(""); // 'doctor' | 'reception'
@@ -422,11 +425,19 @@ export default function SignupPage() {
       await completeDoctorProfile(profile, uploads, doctorPath, role);
 
       if (role === "doctor") {
+        // Only doctors are gated behind admin verification — the backend's
+        // completeProfile() revokes their token and leaves them logged out
+        // until an admin approves them.
         navigate("/doctor-pending", { replace: true });
         return;
       }
 
-      navigate("/reception-pending", { replace: true });
+      // Receptionists aren't gated behind approval: completeProfile() keeps
+      // their registration token active and logs them straight in. Hydrate
+      // the auth context from that token so PrivateRoute sees them as
+      // logged in, then go straight to their dashboard.
+      await refreshUser();
+      navigate("/reception", { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Profile completion failed.");
     } finally {
@@ -439,42 +450,42 @@ export default function SignupPage() {
     "-1": {
       h: (
         <>
-          Create your
+          {t("signup.heroCreateAccount1")}
           <br />
-          <em>account.</em>
+          <em>{t("signup.heroCreateAccount2")}</em>
         </>
       ),
-      p: "Join MediCenter as a doctor or receptionist. Your portal access starts here.",
+      p: t("signup.heroCreateP"),
     },
     0: {
       h: (
         <>
-          Basic
+          {t("signup.heroBasic1")}
           <br />
-          <em>information.</em>
+          <em>{t("signup.heroBasic2")}</em>
         </>
       ),
-      p: "Fill in your personal details to get started. You'll verify your email next.",
+      p: t("signup.heroBasicP"),
     },
     1: {
       h: (
         <>
-          Verify your
+          {t("signup.heroVerify1")}
           <br />
-          <em>email.</em>
+          <em>{t("signup.heroVerify2")}</em>
         </>
       ),
-      p: "We sent a 6-digit code to your email. Enter it below to confirm your identity.",
+      p: t("signup.heroVerifyP"),
     },
     2: {
       h: (
         <>
-          Complete your
+          {t("signup.heroComplete1")}
           <br />
-          <em>profile.</em>
+          <em>{t("signup.heroComplete2")}</em>
         </>
       ),
-      p: "Almost there — add your professional details to finish setting up your account.",
+      p: t("signup.heroCompleteP"),
     },
   };
   const hero = heroContent[String(step)];
@@ -503,7 +514,7 @@ export default function SignupPage() {
           </div>
           <div>
             <div className="signup-logo-name">MediCenter</div>
-            <div className="signup-logo-sub">Health Portal</div>
+            <div className="signup-logo-sub">{t("auth.healthPortal")}</div>
           </div>
         </div>
 
@@ -511,12 +522,7 @@ export default function SignupPage() {
           <h2>{hero.h}</h2>
           <p>{hero.p}</p>
           <div className="signup-features">
-            {[
-              "Secure & HIPAA compliant",
-              "Role-based access control",
-              "Connected to all clinic branches",
-              "Full patient management tools",
-            ].map((f) => (
+            {[t("signup.f1"), t("signup.f2"), t("signup.f3"), t("signup.f4")].map((f) => (
               <div className="signup-feature" key={f}>
                 <div className="signup-feature-dot" />
                 {f}
@@ -526,7 +532,7 @@ export default function SignupPage() {
         </div>
 
         <p className="signup-tagline">
-          © {new Date().getFullYear()} MediCenter. All rights reserved.
+          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
         </p>
       </aside>
 
@@ -537,25 +543,22 @@ export default function SignupPage() {
         {/* ══════════════════════════════════════════════ */}
         {step === -1 && (
           <>
-            <h1 className="signup-section-title">Who are you?</h1>
-            <p className="signup-section-sub">
-              Select your role to get started. This determines your access level
-              and registration flow.
-            </p>
+            <h1 className="signup-section-title">{t("signup.whoAreYou")}</h1>
+            <p className="signup-section-sub">{t("signup.whoAreYouSub")}</p>
 
             <div className="signup-role-grid">
               {[
                 {
                   key: "doctor",
                   icon: "ti-stethoscope",
-                  name: "Doctor",
-                  desc: "Register as a licensed medical professional. You can create or join a clinic.",
+                  name: t("signup.doctor"),
+                  desc: t("signup.doctorDesc"),
                 },
                 {
                   key: "reception",
                   icon: "ti-headset",
-                  name: "Receptionist",
-                  desc: "Register as reception staff. You will be linked to an existing clinic by ID.",
+                  name: t("signup.receptionist"),
+                  desc: t("signup.receptionistDesc"),
                 },
               ].map((r) => (
                 <button
@@ -577,12 +580,12 @@ export default function SignupPage() {
               disabled={!role}
               onClick={() => setStep(0)}
             >
-              Continue as{" "}
-              {role ? (role === "doctor" ? "Doctor" : "Receptionist") : "..."} →
+              {t("signup.continueAs")}{" "}
+              {role ? (role === "doctor" ? t("signup.doctor") : t("signup.receptionist")) : "..."} →
             </button>
 
             <p className="signup-switch">
-              Already have an account? <Link to="/login">Sign in →</Link>
+              {t("signup.alreadyHaveAccount")} <Link to="/login">{t("signup.signInArrow")}</Link>
             </p>
           </>
         )}
@@ -590,18 +593,18 @@ export default function SignupPage() {
         {/* ══════════════════════════════════════════════ */}
         {/* STEPS 0–2 — show progress bar                 */}
         {/* ══════════════════════════════════════════════ */}
-        {step >= 0 && <ProgressBar step={step} />}
+        {step >= 0 && <ProgressBar step={step} steps={STEPS} />}
 
         {/* ══════════════════════════════════════════════ */}
         {/* STEP 0 — Basic info                           */}
         {/* ══════════════════════════════════════════════ */}
         {step === 0 && (
           <>
-            <h1 className="signup-section-title">Basic information</h1>
+            <h1 className="signup-section-title">{t("signup.basicInfoTitle")}</h1>
             <p className="signup-section-sub">
               {role === "doctor"
-                ? "Fill in your personal and account details."
-                : "Fill in your details and your clinic ID to get started."}
+                ? t("signup.basicInfoDoctorSub")
+                : t("signup.basicInfoReceptionSub")}
             </p>
 
             {error && (
@@ -618,7 +621,7 @@ export default function SignupPage() {
               <div className="signup-form-row">
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="firstName">
-                    First name
+                    {t("signup.firstName")}
                   </label>
                   <input
                     id="firstName"
@@ -632,7 +635,7 @@ export default function SignupPage() {
                 </div>
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="lastName">
-                    Last name
+                    {t("signup.lastName")}
                   </label>
                   <input
                     id="lastName"
@@ -648,7 +651,7 @@ export default function SignupPage() {
 
               <div className="signup-field">
                 <label className="signup-label" htmlFor="email">
-                  Email address
+                  {t("signup.emailAddress")}
                 </label>
                 <input
                   id="email"
@@ -665,7 +668,7 @@ export default function SignupPage() {
               <div className="signup-form-row">
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="password">
-                    Password
+                    {t("signup.password")}
                   </label>
                   <input
                     id="password"
@@ -680,7 +683,7 @@ export default function SignupPage() {
                 </div>
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="confirmPassword">
-                    Confirm password
+                    {t("signup.confirmPassword")}
                   </label>
                   <input
                     id="confirmPassword"
@@ -697,7 +700,7 @@ export default function SignupPage() {
 
               <div className="signup-field">
                 <label className="signup-label" htmlFor="idCardNumber">
-                  ID card number
+                  {t("signup.idCardNumber")}
                 </label>
                 <input
                   id="idCardNumber"
@@ -723,7 +726,7 @@ export default function SignupPage() {
               {role === "reception" && (
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="clinicCode">
-                    Clinic code
+                    {t("signup.clinicCode")}
                   </label>
                   <input
                     id="clinicCode"
@@ -749,16 +752,16 @@ export default function SignupPage() {
                   className="signup-btn-outline"
                   onClick={() => setStep(-1)}
                 >
-                  ← Back
+                  {t("signup.back")}
                 </button>
                 <button type="submit" className="signup-btn" disabled={loading}>
-                  {loading ? "Sending code…" : "Continue →"}
+                  {loading ? t("signup.sendingCode") : t("signup.continueArrow")}
                 </button>
               </div>
             </form>
 
             <p className="signup-switch">
-              Already have an account? <Link to="/login">Sign in →</Link>
+              {t("signup.alreadyHaveAccount")} <Link to="/login">{t("signup.signInArrow")}</Link>
             </p>
           </>
         )}
@@ -768,10 +771,9 @@ export default function SignupPage() {
         {/* ══════════════════════════════════════════════ */}
         {step === 1 && (
           <>
-            <h1 className="signup-section-title">Verify your email</h1>
+            <h1 className="signup-section-title">{t("signup.verifyEmailTitle")}</h1>
             <p className="signup-section-sub">
-              We sent a 6-digit code to <strong>{basic.email}</strong>. Enter it
-              below to continue.
+              {t("signup.verifyEmailSub")} <strong>{basic.email}</strong>. {t("signup.verifyEmailSub2")}
             </p>
 
             {error && (
@@ -786,14 +788,14 @@ export default function SignupPage() {
               <div className="signup-resend">
                 {canResend ? (
                   <>
-                    Didn't receive it?{" "}
+                    {t("signup.noReceiveCode")}{" "}
                     <button type="button" onClick={handleResend}>
-                      Resend code
+                      {t("signup.resendCode")}
                     </button>
                   </>
                 ) : (
                   <>
-                    Resend code in <strong>{countdown}s</strong>
+                    {t("signup.resendIn")} <strong>{countdown}s</strong>
                   </>
                 )}
               </div>
@@ -804,14 +806,14 @@ export default function SignupPage() {
                   className="signup-btn-outline"
                   onClick={() => setStep(0)}
                 >
-                  ← Back
+                  {t("signup.back")}
                 </button>
                 <button
                   type="submit"
                   className="signup-btn"
                   disabled={loading || otp.length < 6}
                 >
-                  {loading ? "Verifying…" : "Verify & continue →"}
+                  {loading ? t("signup.verifying") : t("signup.verifyAndContinue")}
                 </button>
               </div>
             </form>
@@ -823,11 +825,11 @@ export default function SignupPage() {
         {/* ══════════════════════════════════════════════ */}
         {step === 2 && (
           <>
-            <h1 className="signup-section-title">Complete your profile</h1>
+            <h1 className="signup-section-title">{t("signup.completeProfileTitle")}</h1>
             <p className="signup-section-sub">
               {role === "doctor"
-                ? "Add your professional details and documents."
-                : "Add your personal details to finish."}
+                ? t("signup.completeProfileDoctorSub")
+                : t("signup.completeProfileReceptionSub")}
             </p>
 
             {error && (
@@ -844,7 +846,7 @@ export default function SignupPage() {
               {/* ── Shared fields ── */}
               <div className="signup-field">
                 <label className="signup-label" htmlFor="phone">
-                  Phone number
+                  {t("signup.phoneNumber")}
                 </label>
                 <input
                   id="phone"
@@ -861,7 +863,7 @@ export default function SignupPage() {
               <div className="signup-form-row">
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="gender">
-                    Gender
+                    {t("signup.gender")}
                   </label>
                   <select
                     id="gender"
@@ -871,14 +873,14 @@ export default function SignupPage() {
                     onChange={handleProfileChange}
                     required
                   >
-                    <option value="">Select gender</option>
-                    <option>male</option>
-                    <option>female</option>
+                    <option value="">{t("signup.selectGender")}</option>
+                    <option value="male">{t("signup.male")}</option>
+                    <option value="female">{t("signup.female")}</option>
                   </select>
                 </div>
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="dob">
-                    Date of birth
+                    {t("signup.dob")}
                   </label>
                   <input
                     id="dob"
@@ -894,7 +896,7 @@ export default function SignupPage() {
               {role === "doctor" && (
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="practiceStartDate">
-                    Practice start date
+                    {t("signup.practiceStartDate")}
                   </label>
                   <input
                     id="practiceStartDate"
@@ -912,7 +914,7 @@ export default function SignupPage() {
               {role === "doctor" && (
                 <div className="signup-field">
                   <label className="signup-label" htmlFor="consultationFee">
-                    Consultation fee
+                    {t("signup.consultationFee")}
                   </label>
                   <input
                     id="consultationFee"
@@ -932,7 +934,7 @@ export default function SignupPage() {
 
               <div className="signup-field">
                 <label className="signup-label" htmlFor="address">
-                  Address
+                  {t("signup.address")}
                 </label>
                 <input
                   id="address"
@@ -950,7 +952,7 @@ export default function SignupPage() {
                 <>
                   <div className="signup-field">
                     <label className="signup-label" htmlFor="departmentId">
-                      Department
+                      {t("signup.department")}
                     </label>
                     <select
                       id="departmentIds"
@@ -960,7 +962,7 @@ export default function SignupPage() {
                       onChange={handleProfileChange}
                       required
                     >
-                      <option value="">Select department</option>
+                      <option value="">{t("signup.selectDepartment")}</option>
                       {DEPARTMENTS.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
@@ -971,7 +973,7 @@ export default function SignupPage() {
 
                   {/* Doctor path */}
                   <div className="signup-field">
-                    <label className="signup-label">Clinic registration</label>
+                    <label className="signup-label">{t("signup.clinicRegistration")}</label>
                     <div className="signup-path-toggle">
                       <button
                         type="button"
@@ -984,9 +986,9 @@ export default function SignupPage() {
                           }));
                         }}
                       >
-                        <div className="signup-path-title">Create a clinic</div>
+                        <div className="signup-path-title">{t("signup.createAClinic")}</div>
                         <div className="signup-path-sub">
-                          Register your own clinic and become the primary doctor
+                          {t("signup.createAClinicDesc")}
                         </div>
                       </button>
                       <button
@@ -1000,9 +1002,9 @@ export default function SignupPage() {
                           }));
                         }}
                       >
-                        <div className="signup-path-title">Join a clinic</div>
+                        <div className="signup-path-title">{t("signup.joinAClinic")}</div>
                         <div className="signup-path-sub">
-                          Enter an existing clinic ID to join as a staff doctor
+                          {t("signup.joinAClinicDesc")}
                         </div>
                       </button>
                     </div>
@@ -1013,12 +1015,12 @@ export default function SignupPage() {
                     <>
                       <div className="signup-divider">
                         <div className="signup-divider-line" />
-                        <span>Clinic details</span>
+                        <span>{t("signup.clinicDetails")}</span>
                         <div className="signup-divider-line" />
                       </div>
                       <div className="signup-field">
                         <label className="signup-label" htmlFor="clinicName">
-                          Clinic name
+                          {t("signup.clinicName")}
                         </label>
                         <input
                           id="clinicName"
@@ -1032,7 +1034,7 @@ export default function SignupPage() {
                       </div>
                       <div className="signup-field">
                         <label className="signup-label" htmlFor="clinicAddress">
-                          Clinic address
+                          {t("signup.clinicAddress")}
                         </label>
                         <input
                           id="clinicAddress"
@@ -1046,7 +1048,7 @@ export default function SignupPage() {
                       </div>
                       <div className="signup-field">
                         <label className="signup-label" htmlFor="clinicPhone">
-                          Clinic phone
+                          {t("signup.clinicPhone")}
                         </label>
                         <input
                           id="clinicPhone"
@@ -1066,7 +1068,7 @@ export default function SignupPage() {
                   {doctorPath === "join" && (
                     <div className="signup-field">
                       <label className="signup-label" htmlFor="joinClinicCode">
-                        Clinic code
+                        {t("signup.clinicCode")}
                       </label>
                       <input
                         id="joinClinicCode"
@@ -1091,20 +1093,22 @@ export default function SignupPage() {
                     <>
                       <div className="signup-divider">
                         <div className="signup-divider-line" />
-                        <span>Documents & photos</span>
+                        <span>{t("signup.documentsAndPhotos")}</span>
                         <div className="signup-divider-line" />
                       </div>
 
                       <UploadField
-                        label="Doctor license"
-                        hint="PDF or image · Max 5MB"
+                        label={t("signup.doctorLicense")}
+                        hint={t("signup.pdfOrImageMax5")}
+                        uploadHint={t("signup.uploadClickDrag")}
                         files={uploads.license}
                         onChange={(f) => setUpload("license", f)}
                       />
 
                       <UploadField
-                        label="Certificates"
-                        hint="You can upload multiple files · PDF or image"
+                        label={t("signup.certificates")}
+                        hint={t("signup.certificatesHint")}
+                        uploadHint={t("signup.uploadClickDrag")}
                         multiple
                         files={uploads.certificates}
                         onChange={(f) => setUpload("certificates", f)}
@@ -1112,14 +1116,16 @@ export default function SignupPage() {
 
                       <div className="signup-form-row">
                         <UploadField
-                          label="ID card photo"
-                          hint="Image · Max 5MB"
+                          label={t("signup.idCardPhoto")}
+                          hint={t("signup.imageMax5")}
+                          uploadHint={t("signup.uploadClickDrag")}
                           files={uploads.idPhoto}
                           onChange={(f) => setUpload("idPhoto", f)}
                         />
                         <UploadField
-                          label="Personal photo"
-                          hint="Image only (JPG/PNG) · Max 5MB"
+                          label={t("signup.personalPhoto")}
+                          hint={t("signup.personalPhotoHint")}
+                          uploadHint={t("signup.uploadClickDrag")}
                           files={uploads.personalPhoto}
                           onChange={(f) => setUpload("personalPhoto", f)}
                           accept="image/jpeg,image/png,image/jpg"
@@ -1128,8 +1134,9 @@ export default function SignupPage() {
 
                       {doctorPath === "create" && (
                         <UploadField
-                          label="Clinic license"
-                          hint="PDF or image · Max 5MB"
+                          label={t("signup.clinicLicense")}
+                          hint={t("signup.pdfOrImageMax5")}
+                          uploadHint={t("signup.uploadClickDrag")}
                           files={uploads.clinicLicense}
                           onChange={(f) => setUpload("clinicLicense", f)}
                         />
@@ -1145,16 +1152,16 @@ export default function SignupPage() {
                   className="signup-btn-outline"
                   onClick={() => setStep(1)}
                 >
-                  ← Back
+                  {t("signup.back")}
                 </button>
                 <button type="submit" className="signup-btn" disabled={loading}>
-                  {loading ? "Submitting…" : "Create account →"}
+                  {loading ? t("signup.submitting") : t("signup.createAccountArrow")}
                 </button>
               </div>
             </form>
 
             <p className="signup-switch">
-              Already have an account? <Link to="/login">Sign in →</Link>
+              {t("signup.alreadyHaveAccount")} <Link to="/login">{t("signup.signInArrow")}</Link>
             </p>
           </>
         )}

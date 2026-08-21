@@ -22,6 +22,19 @@ export const logout = async () => {
   localStorage.removeItem("token");
 };
 
+// CHANGE PASSWORD — POST /auth/change-password, role-agnostic (works for
+// doctor, receptionist, and admin alike). Backend's ChangePasswordRequest
+// requires current_password + password (min 8, confirmed via
+// password_confirmation).
+export const changePassword = async (currentPassword, password, passwordConfirmation) => {
+  const response = await api.post("/auth/change-password", {
+    current_password: currentPassword,
+    password,
+    password_confirmation: passwordConfirmation,
+  });
+  return response.data;
+};
+
 // REGISTER
 // Takes the selected role explicitly instead of hardcoding "doctor" — this
 // is what was silently registering every receptionist as a doctor.

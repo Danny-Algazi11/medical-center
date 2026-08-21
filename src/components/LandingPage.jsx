@@ -1,36 +1,23 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Landing.css";
 
-const FEATURES = [
-  {
-    icon: "ti-calendar-event",
-    title: "Easy Appointments",
-    desc: "Book, reschedule or cancel visits in seconds, any time of day.",
-  },
-  {
-    icon: "ti-file-medical",
-    title: "Your Records",
-    desc: "Instant access to lab results, prescriptions, and visit history.",
-  },
-  {
-    icon: "ti-message-circle-heart",
-    title: "Message Your Doctor",
-    desc: "Secure direct messaging with your care team — no phone tag needed.",
-  },
-  {
-    icon: "ti-shield-lock",
-    title: "HIPAA Compliant",
-    desc: "Your data is encrypted and protected by industry-leading security.",
-  },
-];
-
-const STATS = [
-  { num: "98%", label: "Patient satisfaction score", fill: 98 },
-  { num: "24h", label: "Average response time", fill: 72 },
-  { num: "40+", label: "Specialist doctors on staff", fill: 60 },
-];
-
 export default function LandingPage() {
+  const { t } = useTranslation();
+
+  const FEATURES = [
+    { icon: "ti-calendar-event", title: t("landing.f1Title"), desc: t("landing.f1Desc") },
+    { icon: "ti-file-medical", title: t("landing.f2Title"), desc: t("landing.f2Desc") },
+    { icon: "ti-message-circle-heart", title: t("landing.f3Title"), desc: t("landing.f3Desc") },
+    { icon: "ti-shield-lock", title: t("landing.f4Title"), desc: t("landing.f4Desc") },
+  ];
+
+  const STATS = [
+    { num: "98%", label: t("landing.stat1"), fill: 98 },
+    { num: "24h", label: t("landing.stat2"), fill: 72 },
+    { num: "40+", label: t("landing.stat3"), fill: 60 },
+  ];
+
   return (
     <div className="lp-root">
       {/* ── Nav ── */}
@@ -58,18 +45,18 @@ export default function LandingPage() {
         </Link>
 
         <div className="lp-nav-links">
-          <a href="#features">Services</a>
-          <a href="#features">Doctors</a>
-          <a href="#features">About</a>
-          <a href="#features">Contact</a>
+          <a href="#features">{t("landing.services")}</a>
+          <a href="#features">{t("landing.doctors")}</a>
+          <a href="#features">{t("landing.about")}</a>
+          <a href="#features">{t("landing.contact")}</a>
         </div>
 
         <div className="lp-nav-btns">
           <Link to="/login" className="lp-btn-ghost">
-            Sign in
+            {t("landing.signIn")}
           </Link>
           <Link to="/signup" className="lp-btn-solid">
-            Get started
+            {t("landing.getStarted")}
           </Link>
         </div>
       </nav>
@@ -79,33 +66,30 @@ export default function LandingPage() {
         <div className="lp-hero-left">
           <div className="lp-badge">
             <div className="lp-badge-dot" />
-            Trusted by 12,000+ patients
+            {t("landing.trustedBy")}
           </div>
 
           <h1 className="lp-hero-h1">
-            Healthcare that
+            {t("landing.heroLine1")}
             <br />
-            puts <em>you first.</em>
+            <em>{t("landing.heroEm")}</em>
           </h1>
 
-          <p className="lp-hero-p">
-            Book appointments, access your records, and stay connected with your
-            care team — all from one secure, easy-to-use portal.
-          </p>
+          <p className="lp-hero-p">{t("landing.heroP")}</p>
 
           <div className="lp-hero-btns">
             <Link to="/signup" className="lp-hero-btn-main">
-              Create free account
+              {t("landing.createFreeAccount")}
             </Link>
             <Link to="/login" className="lp-hero-btn-sec">
-              Sign in →
+              {t("landing.signInArrow")}
             </Link>
           </div>
         </div>
 
         <div className="lp-hero-right" aria-hidden="true">
           <div className="lp-stats-card">
-            <h3>At a glance</h3>
+            <h3>{t("landing.atAGlance")}</h3>
             {STATS.map(({ num, label, fill }) => (
               <div className="lp-stat" key={label}>
                 <div className="lp-stat-num">{num}</div>
@@ -135,15 +119,15 @@ export default function LandingPage() {
       {/* ── CTA ── */}
       <section className="lp-cta">
         <div className="lp-cta-text">
-          <h2>Ready to take control of your health?</h2>
-          <p>Join thousands of patients already using MediCenter.</p>
+          <h2>{t("landing.ctaTitle")}</h2>
+          <p>{t("landing.ctaDesc")}</p>
         </div>
         <div className="lp-cta-btns">
           <Link to="/signup" className="lp-cta-btn-w">
-            Create free account
+            {t("landing.createFreeAccount")}
           </Link>
           <Link to="/login" className="lp-cta-btn-o">
-            Sign in instead
+            {t("landing.signInInstead")}
           </Link>
         </div>
       </section>
@@ -151,12 +135,12 @@ export default function LandingPage() {
       {/* ── Footer ── */}
       <footer className="lp-footer">
         <span>
-          © {new Date().getFullYear()} MediCenter. All rights reserved.
+          © {new Date().getFullYear()} MediCenter. {t("landing.rightsReserved")}
         </span>
         <div className="lp-footer-links">
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Contact</a>
+          <a href="#">{t("landing.privacyPolicy")}</a>
+          <a href="#">{t("landing.termsOfService")}</a>
+          <a href="#">{t("landing.contact")}</a>
         </div>
       </footer>
     </div>

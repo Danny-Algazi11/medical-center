@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
 import DocumentCard from "./DocumentCard";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   getDoctors,
   approveDoctor,
@@ -22,14 +23,14 @@ function getStatusColor(status) {
   return map[status] || "gray";
 }
 
-function getStatusLabel(status) {
+function getStatusLabel(status, t) {
   const map = {
-    pending: "Pending",
-    verified: "Verified",
-    rejected: "Rejected",
-    suspended: "Suspended",
+    pending: t("adminCommon.pending"),
+    verified: t("adminCommon.verified"),
+    rejected: t("adminCommon.rejected"),
+    suspended: t("adminCommon.suspended"),
   };
-  return map[status] || "Unknown";
+  return map[status] || status;
 }
 
 function formatDate(value) {
@@ -47,6 +48,7 @@ export default function DoctorDetailPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Instant render if we arrived via the row click in DoctorManagement.jsx
   // (state.doctor is the raw admin/doctors record for this row).
@@ -128,7 +130,7 @@ export default function DoctorDetailPage() {
     <div className="adm-shell">
       <AdminSidebar />
       <div className="adm-main">
-        <AdminTopbar title="Doctor Profile" searchPlaceholder="Search doctors..." />
+        <AdminTopbar title={t("doctorDetail.title")} searchPlaceholder={t("adminCommon.searchDoctors")} />
         <div className="adm-content">
           <div style={{ marginBottom: 14 }}>
             <button
@@ -137,7 +139,7 @@ export default function DoctorDetailPage() {
               className="adm-btn adm-btn-outline"
               style={{ padding: "6px 12px", fontSize: 12 }}
             >
-              <i className="ti ti-arrow-left" aria-hidden="true" /> Back to doctors
+              <i className="ti ti-arrow-left" aria-hidden="true" /> {t("doctorDetail.backToDoctors")}
             </button>
           </div>
 
@@ -159,7 +161,7 @@ export default function DoctorDetailPage() {
 
           {loading && (
             <div style={{ textAlign: "center", padding: "40px" }}>
-              <p>Loading doctor profile...</p>
+              <p>{t("doctorDetail.loadingProfile")}</p>
             </div>
           )}
 
@@ -172,10 +174,10 @@ export default function DoctorDetailPage() {
                     <i className="ti ti-stethoscope" aria-hidden="true" />
                     {account.full_name || `${account.first_name || ""} ${account.last_name || ""}`.trim() || "Doctor"}
                     <span className={`adm-badge adm-badge-${getStatusColor(status)}`}>
-                      {getStatusLabel(status)}
+                      {getStatusLabel(status, t)}
                     </span>
                   </h1>
-                  <p>{account.email || "No email on file"}</p>
+                  <p>{account.email || t("doctorDetail.noEmail")}</p>
                 </div>
                 <div className="adm-header-actions">
                   {status === "pending" && (
@@ -185,14 +187,14 @@ export default function DoctorDetailPage() {
                         onClick={handleApprove}
                         disabled={actionLoading}
                       >
-                        {actionLoading ? "..." : "Verify"}
+                        {actionLoading ? "..." : t("doctorDetail.verify")}
                       </button>
                       <button
                         className="adm-btn adm-btn-red"
                         onClick={handleReject}
                         disabled={actionLoading}
                       >
-                        {actionLoading ? "..." : "Reject"}
+                        {actionLoading ? "..." : t("doctorDetail.reject")}
                       </button>
                     </>
                   )}
@@ -202,7 +204,7 @@ export default function DoctorDetailPage() {
                       onClick={handleSuspend}
                       disabled={actionLoading}
                     >
-                      {actionLoading ? "..." : "Suspend"}
+                      {actionLoading ? "..." : t("doctorDetail.suspend")}
                     </button>
                   )}
                   {status === "suspended" && (
@@ -211,12 +213,12 @@ export default function DoctorDetailPage() {
                       onClick={handleReactivate}
                       disabled={actionLoading}
                     >
-                      {actionLoading ? "..." : "Reactivate"}
+                      {actionLoading ? "..." : t("doctorDetail.reactivate")}
                     </button>
                   )}
                   {status === "rejected" && (
                     <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                      No actions available for rejected doctors
+                      {t("doctorDetail.noActionsRejected")}
                     </span>
                   )}
                 </div>
@@ -226,16 +228,16 @@ export default function DoctorDetailPage() {
               <div className="adm-grid-2 adm-section-gap">
                 <div className="adm-card">
                   <div className="adm-card-header">
-                    <h2 className="adm-card-title">Doctor information</h2>
+                    <h2 className="adm-card-title">{t("doctorDetail.doctorInformation")}</h2>
                   </div>
                   <div style={{ padding: "4px 18px 18px" }}>
                     {[
-                      ["Email", account.email || "N/A"],
-                      ["Phone", account.phone || "N/A"],
-                      ["Date of birth", formatDate(account.dob)],
-                      ["Gender", account.gender || "N/A"],
-                      ["Address", account.address || "N/A"],
-                      ["Registered on", formatDate(doctor.created_at)],
+                      [t("doctorDetail.email"), account.email || "N/A"],
+                      [t("doctorDetail.phone"), account.phone || "N/A"],
+                      [t("doctorDetail.dob"), formatDate(account.dob)],
+                      [t("doctorDetail.gender"), account.gender || "N/A"],
+                      [t("doctorDetail.address"), account.address || "N/A"],
+                      [t("doctorDetail.registeredOn"), formatDate(doctor.created_at)],
                     ].map(([label, value]) => (
                       <div
                         key={label}
@@ -259,7 +261,7 @@ export default function DoctorDetailPage() {
 
                 <div className="adm-card">
                   <div className="adm-card-header">
-                    <h2 className="adm-card-title">Practice</h2>
+                    <h2 className="adm-card-title">{t("doctorDetail.practice")}</h2>
                   </div>
                   <div style={{ padding: "4px 18px 18px", display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {doctor.profile?.departments?.length > 0 ? (
@@ -270,7 +272,7 @@ export default function DoctorDetailPage() {
                       ))
                     ) : (
                       <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                        No practice profile submitted yet
+                        {t("doctorDetail.noPracticeProfile")}
                       </span>
                     )}
                   </div>
@@ -280,7 +282,7 @@ export default function DoctorDetailPage() {
               {/* Documents */}
               <div className="adm-card adm-section-gap">
                 <div className="adm-card-header">
-                  <h2 className="adm-card-title">Submitted documents</h2>
+                  <h2 className="adm-card-title">{t("doctorDetail.submittedDocuments")}</h2>
                 </div>
                 <div
                   style={{
@@ -290,17 +292,17 @@ export default function DoctorDetailPage() {
                     gap: 14,
                   }}
                 >
-                  <DocumentCard label="Photo" url={documents.photo_url} icon="ti-user-circle" />
+                  <DocumentCard label={t("doctorDetail.photo")} url={documents.photo_url} icon="ti-user-circle" />
                   <DocumentCard
-                    label="Medical license"
+                    label={t("doctorDetail.medicalLicense")}
                     url={documents.license_file_url}
                     icon="ti-file-certificate"
                   />
-                  <DocumentCard label="ID card" url={documents.id_card_url} icon="ti-id" />
+                  <DocumentCard label={t("doctorDetail.idCard")} url={documents.id_card_url} icon="ti-id" />
                   {(documents.certificate_urls || []).map((url, i) => (
                     <DocumentCard
                       key={url + i}
-                      label={`Certificate ${i + 1}`}
+                      label={`${t("doctorDetail.certificate")} ${i + 1}`}
                       url={url}
                       icon="ti-certificate"
                     />
@@ -310,7 +312,7 @@ export default function DoctorDetailPage() {
                     !documents.id_card_url &&
                     (documents.certificate_urls || []).length === 0 && (
                       <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>
-                        No documents on file
+                        {t("doctorDetail.noDocuments")}
                       </span>
                     )}
                 </div>
@@ -320,9 +322,9 @@ export default function DoctorDetailPage() {
 
           {!loading && !doctor && !error && (
             <div className="adm-card" style={{ padding: 40, textAlign: "center" }}>
-              <p>Doctor not found.</p>
+              <p>{t("doctorDetail.notFound")}</p>
               <Link to="/admin/doctors" className="adm-card-link">
-                ← Back to doctor list
+                {t("doctorDetail.backToDoctorList")}
               </Link>
             </div>
           )}

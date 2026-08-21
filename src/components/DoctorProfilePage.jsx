@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { useTranslation } from "../i18n/useTranslation";
 import {
   getDoctorProfile,
   updateDoctorProfile,
@@ -32,6 +33,7 @@ function isImageUrl(url) {
 }
 
 export default function DoctorProfilePage() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -336,16 +338,16 @@ export default function DoctorProfilePage() {
     <div className="layout-shell">
       <Sidebar />
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
 
         <main className="page-content dp-content">
-          {loading && <div className="dp-loading">Loading your profile…</div>}
+          {loading && <div className="dp-loading">{t("doctorProfile.loadingProfile")}</div>}
 
           {!loading && loadError && (
             <div className="dp-error-block">
               {loadError}{" "}
               <button className="dp-retry-btn" onClick={load}>
-                Retry
+                {t("doctorProfile.retry")}
               </button>
             </div>
           )}
@@ -374,7 +376,7 @@ export default function DoctorProfilePage() {
                       className="dp-avatar-edit"
                       onClick={() => photoInputRef.current?.click()}
                       disabled={photoUploading}
-                      title="Change photo"
+                      title={t("doctorProfile.changePhoto")}
                     >
                       <i className="ti ti-camera" aria-hidden="true" />
                     </button>
@@ -401,19 +403,19 @@ export default function DoctorProfilePage() {
                 </div>
                 {!editing && (
                   <button className="dp-btn dp-btn-dark" onClick={startEditing}>
-                    <i className="ti ti-edit" aria-hidden="true" /> Edit profile
+                    <i className="ti ti-edit" aria-hidden="true" /> {t("doctorProfile.editProfile")}
                   </button>
                 )}
               </div>
 
               {photoUploading && (
-                <div className="dp-hint">Uploading photo…</div>
+                <div className="dp-hint">{t("doctorProfile.uploadingPhoto")}</div>
               )}
               {uploadError && (
                 <div className="dp-error-inline">{uploadError}</div>
               )}
               {saveOk && (
-                <div className="dp-success-inline">Profile updated.</div>
+                <div className="dp-success-inline">{t("doctorProfile.profileUpdated")}</div>
               )}
 
               {editing ? (
@@ -424,11 +426,11 @@ export default function DoctorProfilePage() {
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Personal information</h2>
+                      <h2 className="card-title">{t("doctorProfile.personalInfo")}</h2>
                     </div>
                     <div className="dp-section-body dp-grid-2">
                       <div className="dp-field">
-                        <label className="dp-label">First name</label>
+                        <label className="dp-label">{t("doctorProfile.firstName")}</label>
                         <input
                           className="dp-input"
                           value={form.first_name}
@@ -438,7 +440,7 @@ export default function DoctorProfilePage() {
                         />
                       </div>
                       <div className="dp-field">
-                        <label className="dp-label">Last name</label>
+                        <label className="dp-label">{t("doctorProfile.lastName")}</label>
                         <input
                           className="dp-input"
                           value={form.last_name}
@@ -448,7 +450,7 @@ export default function DoctorProfilePage() {
                         />
                       </div>
                       <div className="dp-field">
-                        <label className="dp-label">Phone</label>
+                        <label className="dp-label">{t("doctorProfile.phone")}</label>
                         <input
                           className="dp-input"
                           value={form.phone}
@@ -456,7 +458,7 @@ export default function DoctorProfilePage() {
                         />
                       </div>
                       <div className="dp-field">
-                        <label className="dp-label">Address</label>
+                        <label className="dp-label">{t("doctorProfile.address")}</label>
                         <input
                           className="dp-input"
                           value={form.address}
@@ -470,11 +472,11 @@ export default function DoctorProfilePage() {
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Professional details</h2>
+                      <h2 className="card-title">{t("doctorProfile.professionalDetails")}</h2>
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-field">
-                        <label className="dp-label">Biography</label>
+                        <label className="dp-label">{t("doctorProfile.biography")}</label>
                         <textarea
                           className="dp-input dp-textarea"
                           rows={4}
@@ -487,7 +489,7 @@ export default function DoctorProfilePage() {
                       </div>
                       <div className="dp-grid-2">
                         <div className="dp-field">
-                          <label className="dp-label">Consultation fee</label>
+                          <label className="dp-label">{t("doctorProfile.consultationFee")}</label>
                           <input
                             type="number"
                             min="0"
@@ -504,7 +506,7 @@ export default function DoctorProfilePage() {
                         </div>
                         <div className="dp-field">
                           <label className="dp-label">
-                            Languages (comma-separated, e.g. ar, en)
+                            {t("doctorProfile.languagesHint")}
                           </label>
                           <input
                             className="dp-input"
@@ -520,14 +522,14 @@ export default function DoctorProfilePage() {
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Qualifications</h2>
+                      <h2 className="card-title">{t("doctorProfile.qualifications")}</h2>
                     </div>
                     <div className="dp-section-body">
                       {form.qualifications.map((q, i) => (
                         <div className="dp-qual-row" key={i}>
                           <input
                             className="dp-input"
-                            placeholder="Degree"
+                            placeholder={t("doctorProfile.degree")}
                             value={q.degree}
                             onChange={(e) =>
                               updateQualification(i, "degree", e.target.value)
@@ -535,7 +537,7 @@ export default function DoctorProfilePage() {
                           />
                           <input
                             className="dp-input"
-                            placeholder="Institution"
+                            placeholder={t("doctorProfile.institution")}
                             value={q.institution}
                             onChange={(e) =>
                               updateQualification(
@@ -549,7 +551,7 @@ export default function DoctorProfilePage() {
                             type="number"
                             min="1950"
                             className="dp-input dp-qual-year"
-                            placeholder="Year"
+                            placeholder={t("doctorProfile.year")}
                             value={q.year}
                             onChange={(e) =>
                               updateQualification(i, "year", e.target.value)
@@ -559,7 +561,7 @@ export default function DoctorProfilePage() {
                             type="button"
                             className="dp-icon-btn"
                             onClick={() => removeQualification(i)}
-                            aria-label="Remove"
+                            aria-label={t("doctorProfile.remove")}
                           >
                             <i className="ti ti-trash" aria-hidden="true" />
                           </button>
@@ -570,8 +572,7 @@ export default function DoctorProfilePage() {
                         className="dp-btn dp-btn-outline"
                         onClick={addQualification}
                       >
-                        <i className="ti ti-plus" aria-hidden="true" /> Add
-                        qualification
+                        <i className="ti ti-plus" aria-hidden="true" /> {t("doctorProfile.addQualification")}
                       </button>
                     </div>
                   </section>
@@ -582,14 +583,14 @@ export default function DoctorProfilePage() {
                       className="dp-btn dp-btn-outline"
                       onClick={cancelEditing}
                     >
-                      Cancel
+                      {t("doctorProfile.cancel")}
                     </button>
                     <button
                       type="submit"
                       className="dp-btn dp-btn-dark"
                       disabled={saving}
                     >
-                      {saving ? "Saving…" : "Save changes"}
+                      {saving ? t("doctorProfile.saving") : t("doctorProfile.saveChanges")}
                     </button>
                   </div>
                 </form>
@@ -597,23 +598,23 @@ export default function DoctorProfilePage() {
                 <>
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Personal information</h2>
+                      <h2 className="card-title">{t("doctorProfile.personalInfo")}</h2>
                     </div>
                     <div className="dp-section-body dp-grid-2">
                       <div className="dp-readfield">
-                        <span>Phone</span>
+                        <span>{t("doctorProfile.phone")}</span>
                         <strong>{profile.account?.phone || "—"}</strong>
                       </div>
                       <div className="dp-readfield">
-                        <span>Address</span>
+                        <span>{t("doctorProfile.address")}</span>
                         <strong>{profile.account?.address || "—"}</strong>
                       </div>
                       <div className="dp-readfield">
-                        <span>Date of birth</span>
+                        <span>{t("doctorProfile.dob")}</span>
                         <strong>{profile.account?.dob || "—"}</strong>
                       </div>
                       <div className="dp-readfield">
-                        <span>Gender</span>
+                        <span>{t("doctorProfile.gender")}</span>
                         <strong style={{ textTransform: "capitalize" }}>
                           {profile.account?.gender || "—"}
                         </strong>
@@ -623,22 +624,22 @@ export default function DoctorProfilePage() {
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Professional details</h2>
+                      <h2 className="card-title">{t("doctorProfile.professionalDetails")}</h2>
                     </div>
                     <div className="dp-section-body">
                       <p className="dp-bio">
                         {profile.profile?.biography ||
-                          "No biography added yet."}
+                          t("doctorProfile.noBio")}
                       </p>
                       <div className="dp-grid-3">
                         <div className="dp-readfield">
-                          <span>Online Consultation fee</span>
+                          <span>{t("doctorProfile.onlineConsultationFee")}</span>
                           <strong>
                             {profile.profile?.online_consultation_fee ?? "—"}
                           </strong>
                         </div>
                         <div className="dp-readfield">
-                          <span>Practice start</span>
+                          <span>{t("doctorProfile.practiceStart")}</span>
                           <strong>
                             {profile.career?.practice_start_date?.slice(
                               0,
@@ -647,9 +648,9 @@ export default function DoctorProfilePage() {
                           </strong>
                         </div>
                         <div className="dp-readfield">
-                          <span>Experience</span>
+                          <span>{t("doctorProfile.experience")}</span>
                           <strong>
-                            {profile.career?.experience_years ?? "—"} yrs
+                            {profile.career?.experience_years ?? "—"} {t("doctorProfile.years")}
                           </strong>
                         </div>
                       </div>
@@ -665,7 +666,7 @@ export default function DoctorProfilePage() {
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Qualifications</h2>
+                      <h2 className="card-title">{t("doctorProfile.qualifications")}</h2>
                     </div>
                     <div className="dp-section-body">
                       {profile.profile?.qualifications?.length > 0 ? (
@@ -678,14 +679,14 @@ export default function DoctorProfilePage() {
                           </div>
                         ))
                       ) : (
-                        <p className="dp-empty">No qualifications added yet.</p>
+                        <p className="dp-empty">{t("doctorProfile.noQualifications")}</p>
                       )}
                     </div>
                   </section>
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Documents</h2>
+                      <h2 className="card-title">{t("doctorProfile.documents")}</h2>
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-doc-grid">
@@ -699,7 +700,7 @@ export default function DoctorProfilePage() {
                             className="ti ti-file-certificate"
                             aria-hidden="true"
                           />{" "}
-                          License file
+                          {t("doctorProfile.licenseFile")}
                         </a>
                         <a
                           className="dp-doc-link"
@@ -707,7 +708,7 @@ export default function DoctorProfilePage() {
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <i className="ti ti-id" aria-hidden="true" /> ID card
+                          <i className="ti ti-id" aria-hidden="true" /> {t("doctorProfile.idCard")}
                         </a>
                         {(profile.documents?.certificate_urls || []).map(
                           (url, i) => (
@@ -722,7 +723,7 @@ export default function DoctorProfilePage() {
                                 className="ti ti-certificate"
                                 aria-hidden="true"
                               />{" "}
-                              Certificate {i + 1}
+                              {t("doctorProfile.certificate")} {i + 1}
                             </a>
                           ),
                         )}
@@ -735,7 +736,7 @@ export default function DoctorProfilePage() {
                         disabled={certUploading}
                       >
                         <i className="ti ti-upload" aria-hidden="true" />
-                        {certUploading ? "Uploading…" : "Add certificate"}
+                        {certUploading ? t("doctorProfile.uploading") : t("doctorProfile.addCertificate")}
                       </button>
                       <input
                         ref={certInputRef}
@@ -749,7 +750,7 @@ export default function DoctorProfilePage() {
 
                   <section className="card dp-section">
                     <div className="card-header">
-                      <h2 className="card-title">Departments &amp; clinics</h2>
+                      <h2 className="card-title">{t("doctorProfile.departmentsAndClinics")}</h2>
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-chips" style={{ marginBottom: 14 }}>
@@ -772,7 +773,7 @@ export default function DoctorProfilePage() {
                             {editingClinicId !== c.id && (
                               <div className="dp-clinic-fee">
                                 <span className="dp-clinic-fee-label">
-                                  Consultation fee
+                                  {t("doctorProfile.consultationFeeLabel")}
                                 </span>
                                 <span className="dp-clinic-fee-value">
                                   {c.consultation_fee ?? "—"}
@@ -782,7 +783,7 @@ export default function DoctorProfilePage() {
                                   className="dp-clinic-fee-edit"
                                   onClick={() => startEditingClinicFee(c)}
                                 >
-                                  Edit
+                                  {t("doctorProfile.edit")}
                                 </button>
                               </div>
                             )}
@@ -807,7 +808,7 @@ export default function DoctorProfilePage() {
                                 disabled={clinicFeeSaving}
                                 onClick={() => saveClinicFee(c.id)}
                               >
-                                {clinicFeeSaving ? "Saving…" : "Save"}
+                                {clinicFeeSaving ? t("doctorProfile.saving") : t("doctorProfile.save")}
                               </button>
                               <button
                                 type="button"
@@ -815,7 +816,7 @@ export default function DoctorProfilePage() {
                                 disabled={clinicFeeSaving}
                                 onClick={cancelEditingClinicFee}
                               >
-                                Cancel
+                                {t("doctorProfile.cancel")}
                               </button>
                               {clinicFeeError && (
                                 <span className="dp-clinic-fee-error">
@@ -834,8 +835,7 @@ export default function DoctorProfilePage() {
                             className="dp-btn dp-btn-outline dp-btn-sm"
                             onClick={() => openClinicPanel("join")}
                           >
-                            <i className="ti ti-plus" aria-hidden="true" /> Join
-                            a clinic
+                            <i className="ti ti-plus" aria-hidden="true" /> {t("doctorProfile.joinAClinic")}
                           </button>
                           <button
                             type="button"
@@ -843,7 +843,7 @@ export default function DoctorProfilePage() {
                             onClick={() => openClinicPanel("create")}
                           >
                             <i className="ti ti-plus" aria-hidden="true" />{" "}
-                            Create a clinic
+                            {t("doctorProfile.createAClinic")}
                           </button>
                         </div>
                       )}
@@ -854,11 +854,11 @@ export default function DoctorProfilePage() {
                           onSubmit={handleJoinClinic}
                         >
                           <h3 className="dp-clinic-panel-title">
-                            Join a clinic
+                            {t("doctorProfile.joinAClinic")}
                           </h3>
                           <div className="dp-grid-2">
                             <div className="dp-field">
-                              <label className="dp-label">Clinic code</label>
+                              <label className="dp-label">{t("doctorProfile.clinicCode")}</label>
                               <input
                                 className="dp-input"
                                 maxLength={10}
@@ -874,7 +874,7 @@ export default function DoctorProfilePage() {
                             </div>
                             <div className="dp-field">
                               <label className="dp-label">
-                                Consultation fee at this clinic
+                                {t("doctorProfile.consultationFeeAtClinic")}
                               </label>
                               <input
                                 type="number"
@@ -900,7 +900,7 @@ export default function DoctorProfilePage() {
                               className="dp-btn dp-btn-dark dp-btn-sm"
                               disabled={joinSaving}
                             >
-                              {joinSaving ? "Joining…" : "Join clinic"}
+                              {joinSaving ? t("doctorProfile.joining") : t("doctorProfile.joinClinic")}
                             </button>
                             <button
                               type="button"
@@ -908,7 +908,7 @@ export default function DoctorProfilePage() {
                               onClick={closeClinicPanel}
                               disabled={joinSaving}
                             >
-                              Cancel
+                              {t("doctorProfile.cancel")}
                             </button>
                           </div>
                         </form>
@@ -920,11 +920,11 @@ export default function DoctorProfilePage() {
                           onSubmit={handleCreateClinic}
                         >
                           <h3 className="dp-clinic-panel-title">
-                            Create a clinic
+                            {t("doctorProfile.createAClinic")}
                           </h3>
                           <div className="dp-grid-2">
                             <div className="dp-field">
-                              <label className="dp-label">Clinic name</label>
+                              <label className="dp-label">{t("doctorProfile.clinicName")}</label>
                               <input
                                 className="dp-input"
                                 value={createForm.clinic_name}
@@ -938,7 +938,7 @@ export default function DoctorProfilePage() {
                             </div>
                             <div className="dp-field">
                               <label className="dp-label">
-                                Phone (optional)
+                                {t("doctorProfile.phoneOptional")}
                               </label>
                               <input
                                 className="dp-input"
@@ -953,7 +953,7 @@ export default function DoctorProfilePage() {
                             </div>
                           </div>
                           <div className="dp-field">
-                            <label className="dp-label">Address</label>
+                            <label className="dp-label">{t("doctorProfile.address")}</label>
                             <input
                               className="dp-input"
                               value={createForm.clinic_address}
@@ -967,7 +967,7 @@ export default function DoctorProfilePage() {
                           </div>
                           <div className="dp-grid-2">
                             <div className="dp-field">
-                              <label className="dp-label">Latitude</label>
+                              <label className="dp-label">{t("doctorProfile.latitude")}</label>
                               <input
                                 type="number"
                                 step="any"
@@ -983,7 +983,7 @@ export default function DoctorProfilePage() {
                               />
                             </div>
                             <div className="dp-field">
-                              <label className="dp-label">Longitude</label>
+                              <label className="dp-label">{t("doctorProfile.longitude")}</label>
                               <input
                                 type="number"
                                 step="any"
@@ -1001,7 +1001,7 @@ export default function DoctorProfilePage() {
                           </div>
                           <div className="dp-field">
                             <label className="dp-label">
-                              Consultation fee at this clinic
+                              {t("doctorProfile.consultationFeeAtClinic")}
                             </label>
                             <input
                               type="number"
@@ -1019,7 +1019,7 @@ export default function DoctorProfilePage() {
                           </div>
                           <div className="dp-field">
                             <label className="dp-label">
-                              Clinic license file (PDF/JPG/PNG, max 5MB)
+                              {t("doctorProfile.clinicLicenseFile")}
                             </label>
                             <input
                               type="file"
@@ -1038,7 +1038,7 @@ export default function DoctorProfilePage() {
                               className="dp-btn dp-btn-dark dp-btn-sm"
                               disabled={createSaving}
                             >
-                              {createSaving ? "Creating…" : "Create clinic"}
+                              {createSaving ? t("doctorProfile.creating") : t("doctorProfile.createClinic")}
                             </button>
                             <button
                               type="button"
@@ -1046,19 +1046,17 @@ export default function DoctorProfilePage() {
                               onClick={closeClinicPanel}
                               disabled={createSaving}
                             >
-                              Cancel
+                              {t("doctorProfile.cancel")}
                             </button>
                           </div>
                           <p className="dp-note" style={{ marginTop: 10 }}>
-                            New clinics go live as "pending" and need admin
-                            approval before patients can book there.
+                            {t("doctorProfile.newClinicNote")}
                           </p>
                         </form>
                       )}
 
                       <p className="dp-note">
-                        Leaving a department isn't available on this page yet —
-                        that's coming in a follow-up.
+                        {t("doctorProfile.leaveDeptNote")}
                       </p>
                     </div>
                   </section>

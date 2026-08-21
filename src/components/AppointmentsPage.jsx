@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 import "./styles/Appointments.css";
 import {
@@ -24,27 +25,33 @@ import { searchPatients } from "../api/Patients";
 import { getPatientProfile } from "../api/MedicalRecords";
 
 // Matches App\Core\Enums\AppointmentStatus exactly.
-const STATUS_META = {
-  scheduled: { label: "Scheduled", badge: "scheduled" },
-  checked_in: { label: "Checked-in", badge: "checked-in" },
-  in_progress: { label: "In progress", badge: "in-progress" },
-  completed: { label: "Completed", badge: "completed" },
-  cancelled: { label: "Cancelled", badge: "cancelled" },
-  no_show: { label: "No-show", badge: "no-show" },
-};
+function statusMeta(t) {
+  return {
+    scheduled: { label: t("appointments.scheduled"), badge: "scheduled" },
+    checked_in: { label: t("appointments.checkIn"), badge: "checked-in" },
+    in_progress: { label: t("appointments.inProgress"), badge: "in-progress" },
+    completed: { label: t("doctorDashboard.completed"), badge: "completed" },
+    cancelled: { label: t("appointments.cancel"), badge: "cancelled" },
+    no_show: { label: t("appointments.noShow"), badge: "no-show" },
+  };
+}
 
-const FILTER_TABS = [
-  { value: "", label: "All" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "checked_in", label: "Checked-in" },
-  { value: "in_progress", label: "In progress" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "no_show", label: "No-show" },
-];
+function filterTabs(t) {
+  return [
+    { value: "", label: t("appointments.all") },
+    { value: "scheduled", label: t("appointments.scheduled") },
+    { value: "checked_in", label: t("appointments.checkIn") },
+    { value: "in_progress", label: t("appointments.inProgress") },
+    { value: "completed", label: t("doctorDashboard.completed") },
+    { value: "cancelled", label: t("appointments.cancel") },
+    { value: "no_show", label: t("appointments.noShow") },
+  ];
+}
 
 // Matches App\Core\Enums\ConsultationType.
-const ENCOUNTER_LABELS = { chat: "Chat", in_person: "In-person" };
+function encounterLabels(t) {
+  return { chat: t("appointments.chat"), in_person: t("appointments.inPerson") };
+}
 
 const TERMINAL_STATUSES = ["completed", "cancelled", "no_show"];
 
@@ -97,6 +104,7 @@ function availableActions(role, status) {
 // ── Patient info modal — opened by clicking a patient in the table,
 // doctor role only ────────────────────────────────────────────────
 function PatientProfileModal({ patientId, onClose }) {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -121,8 +129,8 @@ function PatientProfileModal({ patientId, onClose }) {
       <div className="modal" style={{ maxWidth: 520 }}>
         <div className="modal-header">
           <div>
-            <h2>Patient Info</h2>
-            <p>Summary and encounter history with this patient.</p>
+            <h2>{t("appointments.patientInfo")}</h2>
+            <p>{t("appointments.patientInfoDesc")}</p>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
             <i className="ti ti-x" aria-hidden="true" />
@@ -134,7 +142,9 @@ function PatientProfileModal({ patientId, onClose }) {
           style={{ padding: "20px 28px", overflowY: "auto" }}
         >
           {loading && (
-            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Loading…</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              {t("doctorDashboard.loading")}
+            </p>
           )}
           {!loading && error && (
             <div className="apt-banner apt-banner-error">{error}</div>
@@ -177,12 +187,12 @@ function PatientProfileModal({ patientId, onClose }) {
                   marginBottom: 8,
                 }}
               >
-                ENCOUNTER HISTORY WITH THIS DOCTOR
+                {t("appointments.encounterHistory").toUpperCase()}
               </div>
 
               {encounters.length === 0 ? (
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                  No past encounters between you and this patient yet.
+                  {t("appointments.noEncounters")}
                 </p>
               ) : (
                 encounters.map((enc) => (
@@ -251,6 +261,7 @@ function NewAppointmentModal({
   onClose,
   onCreated,
 }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState("scheduled"); // "scheduled" | "walk-in"
 
   const [patientQuery, setPatientQuery] = useState(initialPatient?.name || "");
@@ -353,8 +364,8 @@ function NewAppointmentModal({
       <div className="modal">
         <div className="modal-header">
           <div>
-            <h2>New Appointment</h2>
-            <p>Book a scheduled visit or check in a walk-in patient.</p>
+            <h2>{t("appointments.newAppointmentTitle")}</h2>
+            <p>{t("appointments.newAppointmentDesc")}</p>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
             <i className="ti ti-x" aria-hidden="true" />
@@ -368,7 +379,7 @@ function NewAppointmentModal({
                 <i className="ti ti-search" aria-hidden="true" />
                 <input
                   type="text"
-                  placeholder="Search by name, phone, or ID card..."
+                  placeholder={t("appointments.searchPatientPlaceholder")}
                   value={patientQuery}
                   onChange={(e) => {
                     setPatientQuery(e.target.value);
@@ -378,7 +389,7 @@ function NewAppointmentModal({
               </div>
               {patientSearching && (
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                  Searching…
+                  {t("appointments.searching")}
                 </p>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -411,7 +422,7 @@ function NewAppointmentModal({
                   patientQuery.trim().length >= 2 &&
                   patientResults.length === 0 && (
                     <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                      No patients found.
+                      {t("appointments.noPatientsFound")}
                     </p>
                   )}
               </div>
@@ -424,19 +435,19 @@ function NewAppointmentModal({
                   className={`modal-toggle-btn${mode === "scheduled" ? " active" : ""}`}
                   onClick={() => setMode("scheduled")}
                 >
-                  Scheduled
+                  {t("appointments.scheduled")}
                 </button>
                 <button
                   type="button"
                   className={`modal-toggle-btn${mode === "walk-in" ? " active" : ""}`}
                   onClick={() => setMode("walk-in")}
                 >
-                  Walk-in
+                  {t("appointments.walkInMode")}
                 </button>
               </div>
 
               <div className="modal-field">
-                <label className="modal-label">Doctor</label>
+                <label className="modal-label">{t("appointments.doctorLabel")}</label>
                 <select
                   className="modal-select"
                   value={doctorId}
@@ -451,28 +462,27 @@ function NewAppointmentModal({
               </div>
 
               <div className="modal-field">
-                <label className="modal-label">Consultation type</label>
+                <label className="modal-label">{t("appointments.consultationType")}</label>
                 <select
                   className="modal-select"
                   value={encounterType}
                   onChange={(e) => setEncounterType(e.target.value)}
                 >
-                  <option value="in_person">In-person</option>
-                  <option value="chat">Chat</option>
+                  <option value="in_person">{t("appointments.inPerson")}</option>
+                  <option value="chat">{t("appointments.chat")}</option>
                 </select>
               </div>
 
               {mode === "scheduled" && (
                 <div className="modal-field">
-                  <span className="modal-label">Available Times</span>
+                  <span className="modal-label">{t("appointments.availableTimes")}</span>
                   {slotsLoading ? (
                     <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                      Loading slots…
+                      {t("appointments.loadingSlots")}
                     </p>
                   ) : slots.length === 0 ? (
                     <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                      No available slots for this doctor at this clinic in the
-                      next 14 days.
+                      {t("appointments.noSlots")}
                     </p>
                   ) : (
                     <div className="time-slots">
@@ -503,7 +513,7 @@ function NewAppointmentModal({
               )}
 
               <div className="modal-field">
-                <label className="modal-label">Notes (optional)</label>
+                <label className="modal-label">{t("appointments.notesOptional")}</label>
                 <textarea
                   className="modal-input"
                   rows={3}
@@ -521,14 +531,14 @@ function NewAppointmentModal({
 
           <div className="modal-footer">
             <button type="button" className="btn-outline" onClick={onClose}>
-              Cancel
+              {t("doctorProfile.cancel")}
             </button>
             <button type="submit" className="btn-dark" disabled={saving}>
               {saving
                 ? "Saving…"
                 : mode === "scheduled"
-                  ? "Confirm Booking"
-                  : "Create Walk-in"}
+                  ? t("appointments.confirmBooking")
+                  : t("appointments.createWalkIn")}
             </button>
           </div>
         </form>
@@ -543,6 +553,10 @@ export default function AppointmentsPage() {
   const { selectedClinicId, clinics } = useClinic();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const STATUS_META = statusMeta(t);
+  const FILTER_TABS = filterTabs(t);
+  const ENCOUNTER_LABELS = encounterLabels(t);
 
   const [status, setStatus] = useState("");
   const [date, setDate] = useState("");
@@ -721,7 +735,7 @@ export default function AppointmentsPage() {
     <div className="layout-shell">
       <Sidebar />
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
         <main className="page-content">
           <div className="page-toolbar">
             <div>
@@ -734,7 +748,7 @@ export default function AppointmentsPage() {
                   color: "var(--text-primary)",
                 }}
               >
-                Appointment Management
+                {t("appointments.title")}
               </h1>
             </div>
             <div className="page-toolbar-right">
@@ -746,7 +760,7 @@ export default function AppointmentsPage() {
                     changeFilter(setDoctorFilter, e.target.value)
                   }
                 >
-                  <option value="">All Doctors</option>
+                  <option value="">{t("appointments.allDoctors")}</option>
                   {doctorOptions.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}
@@ -767,7 +781,7 @@ export default function AppointmentsPage() {
                   disabled={doctorOptions.length === 0}
                 >
                   <i className="ti ti-plus" aria-hidden="true" />
-                  New Appointment
+                  {t("appointments.newAppointment")}
                 </button>
               )}
             </div>
@@ -806,19 +820,19 @@ export default function AppointmentsPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Patient</th>
-                  {role === "receptionist" && <th>Doctor</th>}
-                  <th>Date &amp; Time</th>
-                  <th>Type</th>
-                  <th>Price</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
+                  <th>{t("appointments.patient")}</th>
+                  {role === "receptionist" && <th>{t("appointments.doctor")}</th>}
+                  <th>{t("appointments.dateTime")}</th>
+                  <th>{t("appointments.type")}</th>
+                  <th>{t("appointments.price")}</th>
+                  <th>{t("appointments.status")}</th>
+                  <th style={{ textAlign: "right" }}>{t("appointments.actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((apt) => {
                   const slot = formatSlot(apt.slot);
-                  const statusMeta = STATUS_META[apt.status] || {
+                  const statusMetaRow = STATUS_META[apt.status] || {
                     label: apt.status,
                     badge: apt.status,
                   };
@@ -886,7 +900,7 @@ export default function AppointmentsPage() {
                               color: "var(--text-muted)",
                             }}
                           >
-                            Walk-in
+                            {t("appointments.walkIn")}
                           </span>
                         )}
                       </td>
@@ -904,8 +918,8 @@ export default function AppointmentsPage() {
                           : "—"}
                       </td>
                       <td>
-                        <span className={`badge badge-${statusMeta.badge}`}>
-                          {statusMeta.label}
+                        <span className={`badge badge-${statusMetaRow.badge}`}>
+                          {statusMetaRow.label}
                         </span>
                       </td>
                       <td>
@@ -916,7 +930,7 @@ export default function AppointmentsPage() {
                               disabled={actingId === apt.id}
                               onClick={() => handleStart(apt.id)}
                             >
-                              Start
+                              {t("appointments.start")}
                             </button>
                           )}
                           {actions.includes("complete") && (
@@ -925,7 +939,7 @@ export default function AppointmentsPage() {
                               disabled={actingId === apt.id}
                               onClick={() => handleComplete(apt.id)}
                             >
-                              Complete
+                              {t("appointments.complete")}
                             </button>
                           )}
                           {actions.includes("check-in") && (
@@ -934,7 +948,7 @@ export default function AppointmentsPage() {
                               disabled={actingId === apt.id}
                               onClick={() => handleCheckIn(apt.id)}
                             >
-                              Check-in
+                              {t("appointments.checkIn")}
                             </button>
                           )}
                           {actions.includes("no-show") && (
@@ -943,7 +957,7 @@ export default function AppointmentsPage() {
                               disabled={actingId === apt.id}
                               onClick={() => handleNoShow(apt.id)}
                             >
-                              No-show
+                              {t("appointments.noShow")}
                             </button>
                           )}
                           {actions.includes("cancel") && (
@@ -952,7 +966,7 @@ export default function AppointmentsPage() {
                               disabled={actingId === apt.id}
                               onClick={() => openCancel(apt.id)}
                             >
-                              Cancel
+                              {t("appointments.cancel")}
                             </button>
                           )}
                         </div>
@@ -970,7 +984,7 @@ export default function AppointmentsPage() {
                         color: "var(--text-muted)",
                       }}
                     >
-                      No appointments found.
+                      {t("appointments.noAppointments")}
                     </td>
                   </tr>
                 )}
@@ -984,7 +998,7 @@ export default function AppointmentsPage() {
                         color: "var(--text-muted)",
                       }}
                     >
-                      Loading…
+                      {t("appointments.loading")}
                     </td>
                   </tr>
                 )}
@@ -1012,7 +1026,7 @@ export default function AppointmentsPage() {
                       color: "var(--text-secondary)",
                     }}
                   >
-                    Page {meta.current_page} of {meta.last_page}
+                    {t("appointments.page")} {meta.current_page} {t("appointments.of")} {meta.last_page}
                   </span>
                   <button
                     className="page-btn"
@@ -1037,8 +1051,8 @@ export default function AppointmentsPage() {
           <div className="modal" style={{ maxWidth: 440 }}>
             <div className="modal-header">
               <div>
-                <h2>Cancel appointment</h2>
-                <p>This can't be undone. Please provide a reason.</p>
+                <h2>{t("appointments.cancelAppointmentTitle")}</h2>
+                <p>{t("appointments.cancelAppointmentDesc")}</p>
               </div>
               <button
                 className="modal-close"
@@ -1054,7 +1068,7 @@ export default function AppointmentsPage() {
                 style={{ display: "block", padding: "20px 28px" }}
               >
                 <div className="modal-field">
-                  <label className="modal-label">Reason</label>
+                  <label className="modal-label">{t("appointments.reason")}</label>
                   <textarea
                     className="modal-input"
                     rows={3}
@@ -1077,14 +1091,14 @@ export default function AppointmentsPage() {
                   onClick={() => setCancelTarget(null)}
                   disabled={cancelSaving}
                 >
-                  Never mind
+                  {t("appointments.neverMind")}
                 </button>
                 <button
                   type="submit"
                   className="btn-dark"
                   disabled={cancelSaving}
                 >
-                  {cancelSaving ? "Cancelling…" : "Cancel appointment"}
+                  {cancelSaving ? t("appointments.cancelling") : t("appointments.cancelAppointment")}
                 </button>
               </div>
             </form>

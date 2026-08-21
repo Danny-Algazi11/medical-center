@@ -1,38 +1,39 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "../i18n/useTranslation";
 import "../components/styles/Admin.css";
 
 const NAV = [
   {
-    group: "Overview",
-    items: [{ to: "/admin", icon: "ti-layout-dashboard", label: "Dashboard" }],
+    groupKey: "admin.groupOverview",
+    items: [{ to: "/admin", icon: "ti-layout-dashboard", labelKey: "admin.dashboard" }],
   },
   {
-    group: "Management",
+    groupKey: "admin.groupManagement",
     items: [
       {
         to: "/admin/doctors",
         icon: "ti-stethoscope",
-        label: "Doctor management",
+        labelKey: "admin.doctorManagement",
       },
       {
         to: "/admin/clinics",
         icon: "ti-building-hospital",
-        label: "Clinic management",
+        labelKey: "admin.clinicManagement",
       },
     ],
   },
   {
-    group: "Reports",
+    groupKey: "admin.groupReports",
     items: [
-      { to: "/admin/complaints", icon: "ti-alert-circle", label: "Complaints" },
-      { to: "/admin/ratings", icon: "ti-star", label: "Ratings" },
+      { to: "/admin/complaints", icon: "ti-alert-circle", labelKey: "admin.complaints" },
+      { to: "/admin/ratings", icon: "ti-star", labelKey: "admin.ratings" },
     ],
   },
   {
-    group: "Analytics",
+    groupKey: "admin.groupAnalytics",
     items: [
-      { to: "/admin/analytics", icon: "ti-chart-bar", label: "Analytics" },
-      { to: "/admin/audit", icon: "ti-clipboard-list", label: "Audit logs" },
+      { to: "/admin/analytics", icon: "ti-chart-bar", labelKey: "admin.analytics" },
+      { to: "/admin/audit", icon: "ti-clipboard-list", labelKey: "admin.auditLogs" },
     ],
   },
 ];
@@ -40,6 +41,7 @@ const NAV = [
 export default function AdminSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   function handleLogout() {
     // Standardized on localStorage + "token", matching axios.js's
@@ -54,22 +56,22 @@ export default function AdminSidebar() {
       <div className="adm-logo">
         <div className="adm-logo-name">MediCenter</div>
         <div className="adm-logo-sub">Admin Portal</div>
-        <div className="adm-logo-badge">SUPER ADMIN</div>
+        <div className="adm-logo-badge">{t("admin.portalBadge")}</div>
       </div>
 
       {/* Nav */}
       <nav className="adm-nav">
-        {NAV.map(({ group, items }) => (
-          <div key={group}>
-            <div className="adm-nav-group">{group}</div>
-            {items.map(({ to, icon, label }) => (
+        {NAV.map(({ groupKey, items }) => (
+          <div key={groupKey}>
+            <div className="adm-nav-group">{t(groupKey)}</div>
+            {items.map(({ to, icon, labelKey }) => (
               <Link
                 key={to}
                 to={to}
                 className={`adm-nav-item${pathname === to ? " active" : ""}`}
               >
                 <i className={`ti ${icon}`} aria-hidden="true" />
-                {label}
+                {t(labelKey)}
               </Link>
             ))}
           </div>
@@ -79,16 +81,16 @@ export default function AdminSidebar() {
       {/* Bottom */}
       <div className="adm-sidebar-bottom">
         <Link to="/admin/settings" className="adm-nav-item">
-          <i className="ti ti-settings" aria-hidden="true" /> Settings
+          <i className="ti ti-settings" aria-hidden="true" /> {t("admin.settings")}
         </Link>
         <button className="adm-nav-item" onClick={handleLogout}>
-          <i className="ti ti-logout" aria-hidden="true" /> Logout
+          <i className="ti ti-logout" aria-hidden="true" /> {t("admin.logout")}
         </button>
         <div className="adm-sidebar-user">
           <div className="adm-sidebar-avatar">SA</div>
           <div>
-            <div className="adm-sidebar-uname">Super Admin</div>
-            <div className="adm-sidebar-urole">System Administrator</div>
+            <div className="adm-sidebar-uname">{t("admin.superAdmin")}</div>
+            <div className="adm-sidebar-urole">{t("admin.systemAdministrator")}</div>
           </div>
         </div>
       </div>

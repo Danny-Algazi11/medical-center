@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 import "./styles/ReceptionDashboard.css";
 import "./styles/Appointments.css";
@@ -12,14 +13,16 @@ import {
 } from "../api/Appointments";
 import { searchDoctorsByClinic } from "../api/Schedule";
 
-const STATUS_META = {
-  scheduled: { label: "Expected", badge: "scheduled" },
-  checked_in: { label: "Checked-in", badge: "checked-in" },
-  in_progress: { label: "In progress", badge: "in-progress" },
-  completed: { label: "Completed", badge: "completed" },
-  cancelled: { label: "Cancelled", badge: "cancelled" },
-  no_show: { label: "No-show", badge: "no-show" },
-};
+function statusMeta(t) {
+  return {
+    scheduled: { label: t("reception.expected"), badge: "scheduled" },
+    checked_in: { label: t("reception.checkedIn"), badge: "checked-in" },
+    in_progress: { label: t("appointments.inProgress"), badge: "in-progress" },
+    completed: { label: t("doctorDashboard.completed"), badge: "completed" },
+    cancelled: { label: t("appointments.cancel"), badge: "cancelled" },
+    no_show: { label: t("reception.noShow"), badge: "no-show" },
+  };
+}
 
 function initialsOf(name) {
   if (!name) return "?";
@@ -41,8 +44,8 @@ function yesterdayISO() {
   return isoDate(d);
 }
 
-function formatTime(slot) {
-  if (!slot?.starts_at) return "Walk-in";
+function formatTime(slot, walkInLabel) {
+  if (!slot?.starts_at) return walkInLabel;
   const d = new Date(slot.starts_at);
   if (Number.isNaN(d.getTime())) return slot.starts_at;
   return d.toLocaleTimeString(undefined, {
@@ -51,11 +54,11 @@ function formatTime(slot) {
   });
 }
 
-function getGreeting() {
+function getGreeting(t) {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return t("reception.goodMorning");
+  if (h < 17) return t("reception.goodAfternoon");
+  return t("reception.goodEvening");
 }
 
 function getDateLabel() {
@@ -70,6 +73,8 @@ function getDateLabel() {
 export default function ReceptionDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const STATUS_META = statusMeta(t);
   const clinicId = user?.profile?.clinic?.[0]?.clinic_id || null;
 
   const [doctors, setDoctors] = useState([]);
@@ -163,22 +168,22 @@ export default function ReceptionDashboard() {
 
   const STATS = [
     {
-      label: "Total Appointments",
+      label: t("reception.totalAppointments"),
       num: todayTotal,
       sub:
         delta != null
-          ? `${delta >= 0 ? "+" : ""}${delta} from yesterday`
+          ? `${delta >= 0 ? "+" : ""}${delta} ${t("reception.fromYesterday")}`
           : null,
       icon: "ti-calendar-check",
     },
     {
-      label: "Checked-in",
+      label: t("reception.checkedIn"),
       num: checkedInCount,
       sub: null,
       icon: "ti-user-check",
     },
-    { label: "Expected", num: scheduledCount, sub: null, icon: "ti-hourglass" },
-    { label: "No-show", num: noShowCount, sub: null, icon: "ti-user-off" },
+    { label: t("reception.expected"), num: scheduledCount, sub: null, icon: "ti-hourglass" },
+    { label: t("reception.noShow"), num: noShowCount, sub: null, icon: "ti-user-off" },
   ];
 
   const doctorCards = doctors.map((doc) => {
@@ -209,16 +214,16 @@ export default function ReceptionDashboard() {
       <Sidebar />
 
       <div className="layout-main">
-        <Topbar searchPlaceholder="Search patients..." />
+        <Topbar searchPlaceholder={t("topbar.searchDefault")} />
 
         <main className="page-content">
           <div className="page-header">
             <div className="page-header-left">
               <h1>
-                {getGreeting()}
+                {getGreeting(t)}
                 {user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}.
               </h1>
-              <p>Here is the overview for today's clinic operations.</p>
+              <p>{t("reception.overviewToday")}</p>
             </div>
             <div className="date-badge">
               <i className="ti ti-calendar" aria-hidden="true" />
@@ -228,7 +233,7 @@ export default function ReceptionDashboard() {
 
           {!clinicId && (
             <div className="apt-banner apt-banner-error">
-              Your account isn't linked to a clinic yet.
+              {t("reception.noClinic")}
             </div>
           )}
           {queueError && (
@@ -262,19 +267,18 @@ export default function ReceptionDashboard() {
           <div className="reception-layout">
             <div>
               <div className="section-header">
-                <h2 className="section-title">On Duty Today</h2>
+                <h2 className="section-title">{t("reception.onDutyToday")}</h2>
               </div>
 
               <div className="doctor-cards">
                 {doctorsLoading && (
                   <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                    Loading…
+                    {t("reception.loading")}
                   </p>
                 )}
                 {!doctorsLoading && doctorCards.length === 0 && (
                   <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                    No verified doctors with an active schedule found at your
-                    clinic yet.
+                    {t("reception.noDoctors")}
                   </p>
                 )}
                 {doctorCards.map((doc) => (
@@ -291,7 +295,7 @@ export default function ReceptionDashboard() {
                         <span
                           className={`avail-badge ${doc.busy ? "busy" : "available"}`}
                         >
-                          {doc.busy ? "BUSY" : "AVAILABLE"}
+                          {doc.busy ? t("reception.busy") : t("reception.available")}
                         </span>
                       </div>
                       <div className="doctor-card-specialty">
@@ -302,11 +306,11 @@ export default function ReceptionDashboard() {
                           <span className="doctor-stat-num">
                             {doc.apptsCount}
                           </span>
-                          <span className="doctor-stat-label">Appts</span>
+                          <span className="doctor-stat-label">{t("reception.appts")}</span>
                         </div>
                         <div className="doctor-stat">
                           <span className="doctor-stat-num">{doc.waiting}</span>
-                          <span className="doctor-stat-label">Waiting</span>
+                          <span className="doctor-stat-label">{t("reception.waiting")}</span>
                         </div>
                       </div>
                     </div>
@@ -316,11 +320,11 @@ export default function ReceptionDashboard() {
 
               <div className="queue-card">
                 <div className="queue-card-header">
-                  <span className="queue-card-title">Upcoming Queue</span>
+                  <span className="queue-card-title">{t("reception.upcomingQueue")}</span>
                   <div className="queue-card-icons">
                     <button
                       className="icon-btn"
-                      aria-label="Refresh"
+                      aria-label={t("reception.refresh")}
                       onClick={loadToday}
                     >
                       <i className="ti ti-refresh" aria-hidden="true" />
@@ -331,11 +335,11 @@ export default function ReceptionDashboard() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Time</th>
-                      <th>Patient</th>
-                      <th>Doctor</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: "right" }}>Actions</th>
+                      <th>{t("reception.time")}</th>
+                      <th>{t("reception.patient")}</th>
+                      <th>{t("reception.doctor")}</th>
+                      <th>{t("reception.status")}</th>
+                      <th style={{ textAlign: "right" }}>{t("reception.actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -349,7 +353,7 @@ export default function ReceptionDashboard() {
                             color: "var(--text-muted)",
                           }}
                         >
-                          Loading…
+                          {t("reception.loading")}
                         </td>
                       </tr>
                     )}
@@ -363,7 +367,7 @@ export default function ReceptionDashboard() {
                             color: "var(--text-muted)",
                           }}
                         >
-                          No appointments today.
+                          {t("reception.noAppointmentsToday")}
                         </td>
                       </tr>
                     )}
@@ -375,7 +379,7 @@ export default function ReceptionDashboard() {
                       return (
                         <tr key={row.id}>
                           <td style={{ fontSize: 14, fontWeight: 500 }}>
-                            {formatTime(row.slot)}
+                            {formatTime(row.slot, t("appointments.walkIn"))}
                           </td>
                           <td>
                             <div className="patient-cell">
@@ -387,7 +391,7 @@ export default function ReceptionDashboard() {
                                   {row.patient?.name || "—"}
                                 </div>
                                 <div className="patient-id">
-                                  ID: {row.patient?.id ?? "—"}
+                                  {t("doctorDashboard.id")}: {row.patient?.id ?? "—"}
                                 </div>
                               </div>
                             </div>
@@ -413,13 +417,13 @@ export default function ReceptionDashboard() {
                                 onClick={() => handleCheckIn(row.id)}
                               >
                                 {actingId === row.id
-                                  ? "Checking in…"
-                                  : "Check-in"}
+                                  ? t("reception.checkingIn")
+                                  : t("reception.checkIn")}
                               </button>
                             ) : (
                               <button
                                 className="icon-btn"
-                                aria-label="View in Appointments"
+                                aria-label={t("reception.viewInAppointments")}
                                 onClick={() => navigate("/appointments")}
                               >
                                 <i
@@ -440,14 +444,14 @@ export default function ReceptionDashboard() {
                     className="queue-view-all"
                     onClick={() => navigate("/appointments")}
                   >
-                    View All {todayTotal ?? ""} Appointments
+                    {t("reception.viewAllAppointments")} {todayTotal ?? ""} {t("reception.appointmentsWord")}
                   </button>
                 </div>
               </div>
             </div>
 
             <div className="quick-actions-card">
-              <div className="quick-actions-header">Quick Actions</div>
+              <div className="quick-actions-header">{t("reception.quickActions")}</div>
               <div className="quick-actions-body">
                 <button
                   className="quick-action-btn dark"
@@ -458,7 +462,7 @@ export default function ReceptionDashboard() {
                   }
                 >
                   <i className="ti ti-user-check" aria-hidden="true" />
-                  Patient Check-In
+                  {t("reception.patientCheckIn")}
                 </button>
                 <button
                   className="quick-action-btn outline"
@@ -467,7 +471,7 @@ export default function ReceptionDashboard() {
                   }
                 >
                   <i className="ti ti-calendar-plus" aria-hidden="true" />
-                  New Appointment
+                  {t("reception.newAppointment")}
                 </button>
                 <button
                   className="quick-action-btn outline"
@@ -478,18 +482,18 @@ export default function ReceptionDashboard() {
                   }
                 >
                   <i className="ti ti-user-off" aria-hidden="true" />
-                  Mark No-Show
+                  {t("reception.markNoShow")}
                 </button>
 
                 <div className="quick-actions-divider" />
 
                 <form onSubmit={handleFindPatient}>
-                  <div className="find-patient-label">Find Patient</div>
+                  <div className="find-patient-label">{t("reception.findPatient")}</div>
                   <div className="find-patient-input">
                     <i className="ti ti-search" aria-hidden="true" />
                     <input
                       type="text"
-                      placeholder="Name, ID, or Phone..."
+                      placeholder={t("reception.findPatientPlaceholder")}
                       value={findQuery}
                       onChange={(e) => setFindQuery(e.target.value)}
                     />

@@ -192,6 +192,14 @@ export default function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/admin/settings"
+                element={
+                  <PrivateRoute>
+                    <SettingsPage />
+                  </PrivateRoute>
+                }
+              />
               {/* Catch-all */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

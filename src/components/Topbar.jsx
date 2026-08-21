@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useClinic } from "../context/ClinicContext";
+import { useTranslation } from "../i18n/useTranslation";
 import "./styles/Layout.css";
 
 function initialsOf(name) {
@@ -11,14 +12,15 @@ function initialsOf(name) {
   return `${first}${last}`.toUpperCase() || "?";
 }
 
-export default function Topbar({ tabs, searchPlaceholder = "Search..." }) {
+export default function Topbar({ tabs, searchPlaceholder }) {
   const { pathname } = useLocation();
   const { user } = useAuth();
   const { clinics, selectedClinicId, setSelectedClinicId } = useClinic();
+  const { t } = useTranslation();
 
   return (
     <header className="topbar">
-      <span className="topbar-title">Clinic Management System</span>
+      <span className="topbar-title">{t("topbar.appTitle")}</span>
 
       {tabs && (
         <nav className="topbar-tabs">
@@ -36,7 +38,10 @@ export default function Topbar({ tabs, searchPlaceholder = "Search..." }) {
 
       <div className="topbar-search">
         <i className="ti ti-search" aria-hidden="true" />
-        <input type="search" placeholder={searchPlaceholder} />
+        <input
+          type="search"
+          placeholder={searchPlaceholder || t("topbar.searchDefault")}
+        />
       </div>
 
       {clinics.length > 0 && (
@@ -57,11 +62,11 @@ export default function Topbar({ tabs, searchPlaceholder = "Search..." }) {
       )}
 
       <div className="topbar-icons">
-        <button className="topbar-icon-btn" aria-label="Notifications">
+        <button className="topbar-icon-btn" aria-label={t("topbar.notifications")}>
           <i className="ti ti-bell" aria-hidden="true" />
           <span className="topbar-badge" aria-hidden="true" />
         </button>
-        <button className="topbar-icon-btn" aria-label="Messages">
+        <button className="topbar-icon-btn" aria-label={t("nav.messages")}>
           <i className="ti ti-mail" aria-hidden="true" />
         </button>
       </div>
@@ -72,8 +77,8 @@ export default function Topbar({ tabs, searchPlaceholder = "Search..." }) {
             <div className="topbar-user-name">{user.full_name}</div>
             <div className="topbar-user-role">
               {user.role === "receptionist"
-                ? "Head Receptionist"
-                : "Doctor Portal"}
+                ? t("topbar.headReceptionist")
+                : t("topbar.doctorPortal")}
             </div>
           </div>
           <div className="topbar-avatar">{initialsOf(user.full_name)}</div>

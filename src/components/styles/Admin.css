@@ -35,6 +35,55 @@
   --adm-blue-l: #dbeafe;
 }
 
+/* ── Dark theme ── Applied when <html data-theme="dark">, set by
+   SettingsContext (same mechanism as Layout.css's [data-theme="dark"]).
+   The sidebar (--adm-dark) is already dark by default and needs no
+   override; only the chrome that's currently light does. */
+[data-theme="dark"] {
+  --adm-content-bg: #121317;
+  --adm-card-bg: #1b1c22;
+  --adm-card-border: #2a2b33;
+  --adm-text-primary: #f0f0f0;
+  --adm-text-secondary: #a8a8ad;
+  --adm-text-muted: #74757c;
+
+  --adm-green-light: rgba(22, 105, 44, 0.22);
+  --adm-teal-l: rgba(26, 124, 90, 0.22);
+  --adm-red-l: rgba(217, 48, 37, 0.22);
+  --adm-amb-l: rgba(227, 116, 0, 0.22);
+  --adm-pur-l: rgba(109, 40, 217, 0.28);
+  --adm-blue-l: rgba(29, 78, 216, 0.28);
+}
+
+/* A handful of spots hardcode a light color instead of reading the tokens
+   above — small hover/stripe/border accents that would otherwise stay
+   bright on an otherwise-dark page. */
+[data-theme="dark"] .adm-topbar-search input:focus,
+[data-theme="dark"] .adm-input,
+[data-theme="dark"] .adm-select,
+[data-theme="dark"] .adm-textarea,
+[data-theme="dark"] .adm-filter-select {
+  background: var(--adm-card-bg);
+  color: var(--adm-text-primary);
+}
+[data-theme="dark"] .adm-topbar-icon:hover,
+[data-theme="dark"] .adm-icon-btn:hover,
+[data-theme="dark"] .adm-page-btn:hover,
+[data-theme="dark"] .adm-bar-wrap,
+[data-theme="dark"] .adm-badge-gray {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .adm-badge-gray {
+  color: var(--adm-text-secondary);
+}
+[data-theme="dark"] .adm-table th,
+[data-theme="dark"] .adm-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+[data-theme="dark"] .adm-table td {
+  border-bottom-color: var(--adm-card-border);
+}
+
 /* ── Shell ─────────────────────────────────────────────── */
 .adm-shell {
   display: flex;
