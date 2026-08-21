@@ -1,7 +1,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000/api/v1",
+  // "127.0.0.1" instead of "localhost": on this machine "localhost" resolves
+  // to IPv6 (::1) first, but the Laravel dev server only binds IPv4, so every
+  // request stalled ~30s waiting for the IPv6 attempt to fail before falling
+  // back. Every page felt slow because every page hits this baseURL.
+  baseURL: "http://127.0.0.1:8000/api/v1",
   headers: {
     Accept: "application/json",
   },

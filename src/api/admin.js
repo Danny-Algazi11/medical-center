@@ -4,29 +4,11 @@ import api from "./axios";
 |--------------------------------------------------------------------------
 | Dashboard Stats
 |--------------------------------------------------------------------------
-| Endpoints are paginated (meta.total), so we read counts from meta,
-| not from data.length (which is capped at per_page).
+| No dedicated stats endpoint — AdminDashboard derives counts from
+| meta.total on the doctors/clinics/departments list calls it already
+| makes for the "recent" tables, instead of fetching each list twice.
 |--------------------------------------------------------------------------
 */
-
-// NOTE: the collection has no admin-facing "list receptionists" or
-// "list patients" endpoint (only registration under /auth/register) —
-// calling /admin/receptionists or /admin/patient 404s. Stats are limited
-// to what /admin/doctors, /admin/clinics, and /admin/departments confirm.
-export const getDashboardStats = async () => {
-  const [doctors, clinics, departments] = await Promise.all([
-    api.get("/admin/doctors"),
-    api.get("/admin/clinics"),
-    api.get("/admin/departments"),
-  ]);
-
-  return {
-    totalDoctors: doctors.data.meta?.total ?? doctors.data.data.length,
-    totalClinics: clinics.data.meta?.total ?? clinics.data.data.length,
-    totalDepartments:
-      departments.data.meta?.total ?? departments.data.data.length,
-  };
-};
 
 /*
 |--------------------------------------------------------------------------

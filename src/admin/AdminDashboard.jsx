@@ -7,7 +7,7 @@ import { useTranslation } from "../i18n/useTranslation";
 
 import "../components/styles/Admin.css";
 
-import { getDashboardStats, getDoctors, getClinics } from "../api/admin";
+import { getDoctors, getClinics, getDepartments } from "../api/admin";
 
 function getGreeting(t) {
   const h = new Date().getHours();
@@ -54,13 +54,20 @@ export default function AdminDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [statsData, doctorsRes, clinicsRes] = await Promise.all([
-        getDashboardStats(),
+      const [doctorsRes, clinicsRes, departmentsRes] = await Promise.all([
         getDoctors(),
         getClinics(),
+        getDepartments(),
       ]);
 
-      setStats(statsData);
+      setStats({
+        totalDoctors:
+          doctorsRes.data.meta?.total ?? doctorsRes.data.data.length,
+        totalClinics:
+          clinicsRes.data.meta?.total ?? clinicsRes.data.data.length,
+        totalDepartments:
+          departmentsRes.data.meta?.total ?? departmentsRes.data.data.length,
+      });
 
       setRecentDoctors(
         (doctorsRes.data.data || []).slice(0, 4).map((d) => {
@@ -148,9 +155,9 @@ export default function AdminDashboard() {
 
           {!loading && stats && (
             <>
-              {/* Stat cards — every number here comes straight from
-                  getDashboardStats(), which reads meta.total off each
-                  paginated admin list endpoint. */}
+              {/* Stat cards — counts read straight off meta.total from the
+                  same doctors/clinics/departments calls used for the
+                  "recent" tables below, so we don't fetch each list twice. */}
               <div
                 className="adm-stat-grid"
                 style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
