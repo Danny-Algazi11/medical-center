@@ -349,6 +349,8 @@ export const translations = {
       messagePlaceholder: "Type a secure medical message...",
       upcoming: "Upcoming",
       lastVisit: "Last Visit",
+      loading: "Loading...",
+      noConversations: "No conversations yet.",
     },
     medicalRecords: {
       checkedIn: "Checked-in",
@@ -1182,6 +1184,8 @@ export const translations = {
       messagePlaceholder: "اكتب رسالة طبية آمنة...",
       upcoming: "القادم",
       lastVisit: "آخر زيارة",
+      loading: "جارٍ التحميل...",
+      noConversations: "لا توجد محادثات بعد.",
     },
     medicalRecords: {
       checkedIn: "تم تسجيل الوصول",
