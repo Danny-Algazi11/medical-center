@@ -365,6 +365,22 @@
   max-width: 180px;
 }
 
+/* The selected clinic's join-code — a quiet, copyable-looking chip so a
+   doctor can read it off at a glance without hunting through settings. */
+.topbar-clinic-code {
+  font-family: "DM Mono", "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
 .topbar-user {
   display: flex;
   align-items: center;

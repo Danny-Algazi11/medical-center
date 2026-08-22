@@ -32,6 +32,7 @@ export const translations = {
       searchDefault: "Search...",
       doctorPortal: "Doctor Portal",
       headReceptionist: "Head Receptionist",
+      clinicCode: "Clinic code",
     },
     admin: {
       portalBadge: "SUPER ADMIN",
@@ -677,6 +678,7 @@ export const translations = {
     },
     clinicDetail: {
       title: "Clinic Profile",
+      code: "Code",
       backToClinics: "Back to clinics",
       loadingProfile: "Loading clinic profile...",
       approve: "Approve",
@@ -935,6 +937,7 @@ export const translations = {
       searchDefault: "بحث...",
       doctorPortal: "بوابة الطبيب",
       headReceptionist: "كبير الموظفين",
+      clinicCode: "رمز العيادة",
     },
     admin: {
       portalBadge: "المشرف العام",
@@ -1580,6 +1583,7 @@ export const translations = {
     },
     clinicDetail: {
       title: "الملف الشخصي للعيادة",
+      code: "الرمز",
       backToClinics: "العودة إلى العيادات",
       loadingProfile: "جارٍ تحميل ملف العيادة...",
       approve: "قبول",

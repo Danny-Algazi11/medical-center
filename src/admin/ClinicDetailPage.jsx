@@ -210,6 +210,24 @@ export default function ClinicDetailPage() {
                     </span>
                   </h1>
                   <p>{clinic.address || t("clinicDetail.noAddress")}</p>
+                  {clinic.code && (
+                    <p style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ color: "var(--adm-text-muted)" }}>
+                        {t("clinicDetail.code")}:
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          fontSize: 12,
+                          padding: "1px 6px",
+                          border: "1px solid var(--adm-border)",
+                          borderRadius: 4,
+                        }}
+                      >
+                        {clinic.code}
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div className="adm-header-actions">
                   {status === "pending" && (

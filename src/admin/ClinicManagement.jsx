@@ -44,6 +44,7 @@ function mapClinic(c) {
   return {
     id: c.id,
     name: c.name,
+    code: c.code || "—",
     phone: c.phone || "N/A",
     address: c.address || "N/A",
     owner: c.owner?.name || "—",
@@ -337,9 +338,23 @@ export default function ClinicManagement() {
                             style={{
                               fontSize: 11,
                               color: "var(--adm-text-muted)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
                             }}
                           >
                             {c.phone}
+                            <span
+                              style={{
+                                fontFamily: "monospace",
+                                fontSize: 10,
+                                padding: "1px 5px",
+                                border: "1px solid var(--adm-border)",
+                                borderRadius: 4,
+                              }}
+                            >
+                              {c.code}
+                            </span>
                           </div>
                         </td>
                         <td

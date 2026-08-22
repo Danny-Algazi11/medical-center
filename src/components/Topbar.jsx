@@ -15,7 +15,8 @@ function initialsOf(name) {
 export default function Topbar({ tabs, searchPlaceholder }) {
   const { pathname } = useLocation();
   const { user } = useAuth();
-  const { clinics, selectedClinicId, setSelectedClinicId } = useClinic();
+  const { clinics, selectedClinicId, selectedClinic, setSelectedClinicId } =
+    useClinic();
   const { t } = useTranslation();
 
   return (
@@ -58,6 +59,14 @@ export default function Topbar({ tabs, searchPlaceholder }) {
               </option>
             ))}
           </select>
+          {selectedClinic?.clinic_code && (
+            <span
+              className="topbar-clinic-code"
+              title={t("topbar.clinicCode")}
+            >
+              {selectedClinic.clinic_code}
+            </span>
+          )}
         </div>
       )}
 
