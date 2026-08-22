@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 const ROUTE_ROLES = {
   "/reception": ["receptionist"],
   "/dashboard": ["doctor"],
+  "/wallet": ["doctor"],
   "/profile": ["doctor"],
   "/schedule": ["doctor", "receptionist"],
   "/appointments": ["doctor", "receptionist"],

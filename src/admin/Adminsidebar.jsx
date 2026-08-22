@@ -33,6 +33,7 @@ const NAV = [
     groupKey: "admin.groupAnalytics",
     items: [
       { to: "/admin/analytics", icon: "ti-chart-bar", labelKey: "admin.analytics" },
+      { to: "/admin/payments", icon: "ti-receipt-2", labelKey: "admin.payments" },
       { to: "/admin/audit", icon: "ti-clipboard-list", labelKey: "admin.auditLogs" },
     ],
   },

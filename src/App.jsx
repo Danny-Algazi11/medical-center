@@ -9,6 +9,7 @@ import LoginPage from "./components/LoginPage";
 import SignupPage from "./components/SignupPage";
 import DoctorDashboard from "./components/DoctorDashboard";
 import DoctorProfilePage from "./components/DoctorProfilePage";
+import DoctorWalletPage from "./components/DoctorWalletPage";
 import AppointmentsPage from "./components/AppointmentsPage";
 import PatientsPage from "./components/PatientsPage";
 import MessagesPage from "./components/MessagesPage";
@@ -24,6 +25,7 @@ import ClinicDetailPage from "./admin/ClinicDetailPage";
 import ComplaintsPage from "./admin/ComplaintsPage";
 import RatingsPage from "./admin/RatingsPage";
 import AnalyticsPage from "./admin/AnalyticsPage";
+import PaymentsPage from "./admin/PaymentsPage";
 import AuditLogsPage from "./admin/AuditLogsPage";
 import SchedulePage from "./components/SchedulePage";
 
@@ -60,6 +62,14 @@ export default function App() {
                 element={
                   <PrivateRoute>
                     <DoctorProfilePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/wallet"
+                element={
+                  <PrivateRoute>
+                    <DoctorWalletPage />
                   </PrivateRoute>
                 }
               />
@@ -181,6 +191,14 @@ export default function App() {
                 element={
                   <PrivateRoute>
                     <AnalyticsPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/payments"
+                element={
+                  <PrivateRoute>
+                    <PaymentsPage />
                   </PrivateRoute>
                 }
               />

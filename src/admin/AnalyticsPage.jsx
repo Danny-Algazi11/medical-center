@@ -8,6 +8,15 @@ import {
   getAuditLogs,
 } from "../api/admin";
 import {
+  getFinancialSummary,
+  getTopUpRequests,
+  approveTopUp,
+  rejectTopUp,
+  getWithdrawalRequests,
+  approveWithdrawal,
+  rejectWithdrawal,
+} from "../api/wallet";
+import {
   formatAuditAction,
   formatEntityType,
   formatTimestamp,
@@ -87,6 +96,23 @@ export default function AnalyticsPage() {
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState("");
 
+  const [finance, setFinance] = useState(null);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeError, setFinanceError] = useState("");
+
+  const [topUps, setTopUps] = useState([]);
+  const [topUpsLoading, setTopUpsLoading] = useState(false);
+  const [topUpsError, setTopUpsError] = useState("");
+
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [withdrawalsLoading, setWithdrawalsLoading] = useState(false);
+  const [withdrawalsError, setWithdrawalsError] = useState("");
+
+  // { kind: "top-up" | "withdrawal", id } while a reject reason is being typed
+  const [rejecting, setRejecting] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionBusyId, setActionBusyId] = useState(null);
+
   const loadDashboard = useCallback(async () => {
     setDashLoading(true);
     setDashError("");
@@ -142,6 +168,94 @@ export default function AnalyticsPage() {
     }
   }, []);
 
+  const loadFinance = useCallback(async () => {
+    setFinanceLoading(true);
+    setFinanceError("");
+    try {
+      const res = await getFinancialSummary();
+      setFinance(res.data.data);
+    } catch (err) {
+      setFinanceError(err.message || "Failed to load financial summary");
+    } finally {
+      setFinanceLoading(false);
+    }
+  }, []);
+
+  const loadTopUps = useCallback(async () => {
+    setTopUpsLoading(true);
+    setTopUpsError("");
+    try {
+      const res = await getTopUpRequests({ status: "pending", per_page: 20 });
+      setTopUps(res.data.data || []);
+    } catch (err) {
+      setTopUpsError(err.message || "Failed to load top-up requests");
+    } finally {
+      setTopUpsLoading(false);
+    }
+  }, []);
+
+  const loadWithdrawals = useCallback(async () => {
+    setWithdrawalsLoading(true);
+    setWithdrawalsError("");
+    try {
+      const res = await getWithdrawalRequests({ status: "pending", per_page: 20 });
+      setWithdrawals(res.data.data || []);
+    } catch (err) {
+      setWithdrawalsError(err.message || "Failed to load withdrawal requests");
+    } finally {
+      setWithdrawalsLoading(false);
+    }
+  }, []);
+
+  function startReject(kind, id) {
+    setRejecting({ kind, id });
+    setRejectReason("");
+  }
+
+  function cancelReject() {
+    setRejecting(null);
+    setRejectReason("");
+  }
+
+  async function handleApprove(kind, id) {
+    setActionBusyId(id);
+    try {
+      if (kind === "top-up") {
+        await approveTopUp(id);
+        loadTopUps();
+      } else {
+        await approveWithdrawal(id);
+        loadWithdrawals();
+      }
+      loadFinance();
+    } catch (err) {
+      window.alert(err.message || "Action failed.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
+  async function handleReject() {
+    if (!rejecting) return;
+    const { kind, id } = rejecting;
+    setActionBusyId(id);
+    try {
+      if (kind === "top-up") {
+        await rejectTopUp(id, rejectReason || undefined);
+        loadTopUps();
+      } else {
+        await rejectWithdrawal(id, rejectReason || undefined);
+        loadWithdrawals();
+      }
+      loadFinance();
+      cancelReject();
+    } catch (err) {
+      window.alert(err.message || "Action failed.");
+    } finally {
+      setActionBusyId(null);
+    }
+  }
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
@@ -156,6 +270,11 @@ export default function AnalyticsPage() {
     if (tab === "audit logs" && logs.length === 0 && !logsLoading) {
       loadLogs();
     }
+    if (tab === "finance" && finance === null && !financeLoading) {
+      loadFinance();
+      loadTopUps();
+      loadWithdrawals();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -166,6 +285,7 @@ export default function AnalyticsPage() {
     { key: "overview", label: t("analytics.overview") },
     { key: "doctor performance", label: t("analytics.doctorPerformance") },
     { key: "user engagement", label: t("analytics.userEngagement") },
+    { key: "finance", label: t("admin.finance") },
     { key: "audit logs", label: t("analytics.auditLogs") },
   ];
 
@@ -390,6 +510,223 @@ export default function AnalyticsPage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Finance tab ── */}
+          {tab === "finance" && (
+            <div>
+              {financeError && (
+                <div style={{ padding: 12, color: "#c00", fontSize: 13 }}>{financeError}</div>
+              )}
+
+              {financeLoading && (
+                <div style={{ textAlign: "center", padding: "40px" }}>
+                  <p>{t("wallet.loadingFinance")}</p>
+                </div>
+              )}
+
+              {!financeLoading && finance && (
+                <>
+                  <div className="adm-page-header" style={{ marginBottom: 12 }}>
+                    <div className="adm-page-header-left">
+                      <h2 style={{ margin: 0, fontSize: 16 }}>{t("wallet.financeTitle")}</h2>
+                      <p style={{ margin: 0 }}>{t("wallet.financeSubtitle")}</p>
+                    </div>
+                  </div>
+
+                  <div className="adm-stat-grid" style={{ marginBottom: 20, gridTemplateColumns: "repeat(3, 1fr)" }}>
+                    {[
+                      { label: t("wallet.platformBalance"), num: finance.platform_balance, icon: "ti-building-bank" },
+                      { label: t("wallet.totalFeesCollected"), num: finance.total_fees_collected, icon: "ti-receipt" },
+                      { label: t("wallet.totalPaidIn"), num: finance.total_paid_in, icon: "ti-credit-card" },
+                      { label: t("wallet.totalRefunded"), num: finance.total_refunded, icon: "ti-rotate" },
+                      { label: t("wallet.totalDoctorPayouts"), num: finance.total_doctor_payouts, icon: "ti-stethoscope" },
+                      {
+                        label: t("wallet.pendingTopUps"),
+                        num: finance.pending_top_up_requests?.count ?? 0,
+                        sub: formatLabel(String(finance.pending_top_up_requests?.amount ?? 0)),
+                        icon: "ti-arrow-up-circle",
+                      },
+                    ].map((s) => (
+                      <div className="adm-stat-card" key={s.label}>
+                        <div>
+                          <div className="adm-stat-label">{s.label}</div>
+                          <div className="adm-stat-num">
+                            {typeof s.num === "number" ? s.num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : s.num}
+                          </div>
+                        </div>
+                        <i className={`ti ${s.icon} adm-stat-icon`} aria-hidden="true" />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="adm-card" style={{ marginBottom: 20 }}>
+                    <div className="adm-card-header">
+                      <h2 className="adm-card-title">{t("wallet.paymentsByStatus")}</h2>
+                    </div>
+                    <StatusBreakdown
+                      byStatus={finance.payments_by_status}
+                      total={Object.values(finance.payments_by_status || {}).reduce((a, b) => a + b, 0)}
+                      t={t}
+                    />
+                  </div>
+
+                  <div className="adm-grid-2">
+                    <div className="adm-card">
+                      <div className="adm-card-header">
+                        <h2 className="adm-card-title">{t("wallet.pendingTopUps")}</h2>
+                      </div>
+                      {topUpsError && (
+                        <div style={{ padding: 16, color: "#c00", fontSize: 13 }}>{topUpsError}</div>
+                      )}
+                      {topUpsLoading && (
+                        <div style={{ textAlign: "center", padding: "24px" }}>
+                          <p>{t("adminCommon.loading")}</p>
+                        </div>
+                      )}
+                      {!topUpsLoading && (
+                        <table className="adm-table">
+                          <thead>
+                            <tr>
+                              <th>{t("wallet.user")}</th>
+                              <th>{t("wallet.amount")}</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {topUps.map((r) => (
+                              <tr key={r.id}>
+                                <td style={{ fontSize: 13, fontWeight: 500 }}>{r.user_name || r.user_id}</td>
+                                <td style={{ fontSize: 13, fontWeight: 500 }}>{r.amount}</td>
+                                <td>
+                                  {rejecting?.kind === "top-up" && rejecting.id === r.id ? (
+                                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                      <input
+                                        className="adm-input"
+                                        placeholder={t("wallet.rejectReason")}
+                                        value={rejectReason}
+                                        onChange={(e) => setRejectReason(e.target.value)}
+                                        style={{ minWidth: 120 }}
+                                      />
+                                      <button className="adm-btn adm-btn-red" onClick={handleReject} disabled={actionBusyId === r.id}>
+                                        {t("wallet.confirmReject")}
+                                      </button>
+                                      <button className="adm-btn adm-btn-outline" onClick={cancelReject}>
+                                        {t("wallet.cancel")}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                      <button
+                                        className="adm-btn adm-btn-green"
+                                        onClick={() => handleApprove("top-up", r.id)}
+                                        disabled={actionBusyId === r.id}
+                                      >
+                                        {t("wallet.approve")}
+                                      </button>
+                                      <button
+                                        className="adm-btn adm-btn-outline"
+                                        onClick={() => startReject("top-up", r.id)}
+                                        disabled={actionBusyId === r.id}
+                                      >
+                                        {t("wallet.reject")}
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {topUps.length === 0 && (
+                              <tr>
+                                <td colSpan={3} style={{ textAlign: "center", padding: 24 }}>
+                                  {t("wallet.noTopUpRequestsAdmin")}
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    <div className="adm-card">
+                      <div className="adm-card-header">
+                        <h2 className="adm-card-title">{t("wallet.pendingWithdrawals")}</h2>
+                      </div>
+                      {withdrawalsError && (
+                        <div style={{ padding: 16, color: "#c00", fontSize: 13 }}>{withdrawalsError}</div>
+                      )}
+                      {withdrawalsLoading && (
+                        <div style={{ textAlign: "center", padding: "24px" }}>
+                          <p>{t("adminCommon.loading")}</p>
+                        </div>
+                      )}
+                      {!withdrawalsLoading && (
+                        <table className="adm-table">
+                          <thead>
+                            <tr>
+                              <th>{t("wallet.user")}</th>
+                              <th>{t("wallet.amount")}</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {withdrawals.map((r) => (
+                              <tr key={r.id}>
+                                <td style={{ fontSize: 13, fontWeight: 500 }}>{r.user_name || r.user_id}</td>
+                                <td style={{ fontSize: 13, fontWeight: 500 }}>{r.amount}</td>
+                                <td>
+                                  {rejecting?.kind === "withdrawal" && rejecting.id === r.id ? (
+                                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                      <input
+                                        className="adm-input"
+                                        placeholder={t("wallet.rejectReason")}
+                                        value={rejectReason}
+                                        onChange={(e) => setRejectReason(e.target.value)}
+                                        style={{ minWidth: 120 }}
+                                      />
+                                      <button className="adm-btn adm-btn-red" onClick={handleReject} disabled={actionBusyId === r.id}>
+                                        {t("wallet.confirmReject")}
+                                      </button>
+                                      <button className="adm-btn adm-btn-outline" onClick={cancelReject}>
+                                        {t("wallet.cancel")}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                      <button
+                                        className="adm-btn adm-btn-green"
+                                        onClick={() => handleApprove("withdrawal", r.id)}
+                                        disabled={actionBusyId === r.id}
+                                      >
+                                        {t("wallet.approve")}
+                                      </button>
+                                      <button
+                                        className="adm-btn adm-btn-outline"
+                                        onClick={() => startReject("withdrawal", r.id)}
+                                        disabled={actionBusyId === r.id}
+                                      >
+                                        {t("wallet.reject")}
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {withdrawals.length === 0 && (
+                              <tr>
+                                <td colSpan={3} style={{ textAlign: "center", padding: 24 }}>
+                                  {t("wallet.noWithdrawalRequestsAdmin")}
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

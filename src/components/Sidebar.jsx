@@ -23,6 +23,12 @@ const NAV_ITEMS = [
     roles: ["doctor"],
   },
   {
+    to: "/wallet",
+    icon: "ti-wallet",
+    labelKey: "nav.wallet",
+    roles: ["doctor"],
+  },
+  {
     to: "/schedule",
     icon: "ti-calendar-week",
     labelKey: "nav.schedule",

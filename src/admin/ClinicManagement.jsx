@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
+import MapPicker from "../components/MapPicker";
 import { useTranslation } from "../i18n/useTranslation";
 import {
   getClinics,
@@ -109,6 +110,10 @@ export default function ClinicManagement() {
 
   function handleChange(e) {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  }
+
+  function handleMapPick(lat, lng) {
+    setForm((p) => ({ ...p, latitude: lat, longitude: lng }));
   }
 
   async function handleAdd(e) {
@@ -504,6 +509,19 @@ export default function ClinicManagement() {
                     onChange={handleChange}
                     placeholder="123 Main Street"
                     required
+                  />
+                </div>
+                <div className="adm-field">
+                  <label className="adm-label">
+                    {t("clinicManagement.mapLabel")}
+                  </label>
+                  <p className="adm-map-hint">
+                    {t("clinicManagement.mapHint")}
+                  </p>
+                  <MapPicker
+                    latitude={form.latitude ? Number(form.latitude) : null}
+                    longitude={form.longitude ? Number(form.longitude) : null}
+                    onChange={handleMapPick}
                   />
                 </div>
                 <div

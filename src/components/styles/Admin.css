@@ -937,3 +937,19 @@
   font-size: 12px;
   flex-shrink: 0;
 }
+
+/* ── Clinic location map picker (Add Clinic modal) ───────
+   Same .signup-map-picker class MapPicker.jsx renders internally
+   (shared with the doctor-signup clinic step) - defined here too so it
+   renders correctly regardless of which page's CSS chunk loaded first. */
+.signup-map-picker {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.adm-map-hint {
+  font-size: 11px;
+  color: var(--adm-text-muted);
+  font-weight: 400;
+  margin-bottom: 8px;
+}
