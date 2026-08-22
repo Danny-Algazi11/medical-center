@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "../i18n/useTranslation";
+import logo from "../assets/logo.png";
 import "../components/styles/Admin.css";
 
 const NAV = [
@@ -55,7 +56,9 @@ export default function AdminSidebar() {
     <aside className="adm-sidebar">
       {/* Logo */}
       <div className="adm-logo">
-        <div className="adm-logo-name">MediZone</div>
+        <div className="adm-logo-chip">
+          <img src={logo} alt="MediZone" className="adm-logo-img" />
+        </div>
         <div className="adm-logo-sub">Admin Portal</div>
         <div className="adm-logo-badge">{t("admin.portalBadge")}</div>
       </div>

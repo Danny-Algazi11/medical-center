@@ -61,16 +61,6 @@ export default function Topbar({ tabs, searchPlaceholder }) {
         </div>
       )}
 
-      <div className="topbar-icons">
-        <button className="topbar-icon-btn" aria-label={t("topbar.notifications")}>
-          <i className="ti ti-bell" aria-hidden="true" />
-          <span className="topbar-badge" aria-hidden="true" />
-        </button>
-        <button className="topbar-icon-btn" aria-label={t("nav.messages")}>
-          <i className="ti ti-mail" aria-hidden="true" />
-        </button>
-      </div>
-
       {user && (
         <div className="topbar-user">
           <div>

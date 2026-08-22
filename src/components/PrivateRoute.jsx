@@ -13,6 +13,7 @@ const ROUTE_ROLES = {
   "/appointments": ["doctor", "receptionist"],
   "/patients": ["receptionist"],
   "/medical-records": ["doctor"],
+  "/messages": ["doctor"],
 };
 
 export default function PrivateRoute({ children }) {

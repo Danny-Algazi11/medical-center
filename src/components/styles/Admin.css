@@ -66,7 +66,6 @@
   background: var(--adm-card-bg);
   color: var(--adm-text-primary);
 }
-[data-theme="dark"] .adm-topbar-icon:hover,
 [data-theme="dark"] .adm-icon-btn:hover,
 [data-theme="dark"] .adm-page-btn:hover,
 [data-theme="dark"] .adm-bar-wrap,
@@ -111,12 +110,21 @@
   border-bottom: 1px solid var(--adm-border);
 }
 
-.adm-logo-name {
-  font-family: "DM Serif Display", serif;
-  font-size: 16px;
-  color: #fff;
-  font-weight: 400;
-  line-height: 1.2;
+/* White chip behind the logo image so it stays legible on the dark
+   sidebar — invisible on light surfaces, so safe to reuse anywhere. */
+.adm-logo-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 10px;
+  padding: 5px 10px;
+  width: fit-content;
+}
+
+.adm-logo-img {
+  display: block;
+  height: 32px;
+  width: auto;
 }
 
 .adm-logo-sub {
@@ -124,7 +132,7 @@
   color: rgba(255, 255, 255, 0.35);
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  margin-top: 2px;
+  margin-top: 8px;
 }
 
 .adm-logo-badge {
@@ -292,37 +300,6 @@
 .adm-topbar-search input:focus {
   border-color: var(--adm-green);
   background: #fff;
-}
-
-.adm-topbar-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 7px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--adm-text-secondary);
-  font-size: 18px;
-  transition: background 0.15s;
-  position: relative;
-}
-
-.adm-topbar-icon:hover {
-  background: #f0f0f0;
-}
-
-.adm-topbar-badge {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--adm-red);
-  border: 1.5px solid #fff;
 }
 
 /* ── Page content ──────────────────────────────────────── */

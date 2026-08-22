@@ -39,23 +39,22 @@
   text-decoration: none;
 }
 
-.lp-logo-icon {
-  width: 34px;
-  height: 34px;
-  background: var(--g);
-  border-radius: 9px;
-  display: flex;
+/* White chip behind the logo image — invisible on the nav's light
+   background, but keeps the mark legible if that background ever goes
+   dark (e.g. dark mode), so it's safe either way. */
+.lp-logo-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 16px;
-  flex-shrink: 0;
+  background: #fff;
+  border-radius: 9px;
+  padding: 4px 8px;
+  width: fit-content;
 }
 
-.lp-logo-name {
-  font-family: "DM Serif Display", serif;
-  font-size: 18px;
-  color: var(--td);
+.lp-logo-img {
+  display: block;
+  height: 32px;
+  width: auto;
 }
 
 .lp-nav-links {

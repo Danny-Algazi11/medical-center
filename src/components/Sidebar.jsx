@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "../i18n/useTranslation";
+import logo from "../assets/logo.png";
 import "./styles/Layout.css";
 
 const NAV_ITEMS = [
@@ -52,7 +53,12 @@ const NAV_ITEMS = [
     labelKey: "nav.medicalRecords",
     roles: ["doctor"],
   },
-  { to: "/messages", icon: "ti-message-circle", labelKey: "nav.messages" },
+  {
+    to: "/messages",
+    icon: "ti-message-circle",
+    labelKey: "nav.messages",
+    roles: ["doctor"],
+  },
   { to: "/settings", icon: "ti-settings", labelKey: "nav.settings" },
 ];
 
@@ -83,7 +89,9 @@ export default function Sidebar() {
     <aside className="sidebar">
       {/* Logo */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-name">MediZone</div>
+        <div className="brand-logo-chip">
+          <img src={logo} alt="MediZone" className="brand-logo-img" />
+        </div>
         <div className="sidebar-logo-sub">{t("auth.healthPortal")}</div>
       </div>
 

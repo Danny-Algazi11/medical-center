@@ -67,24 +67,21 @@
   text-decoration: none;
 }
 
-.signup-logo-icon {
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
-  display: flex;
+/* White chip behind the logo image so it stays legible on this panel's
+   dark green background. */
+.signup-logo-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 17px;
-  flex-shrink: 0;
+  background: #fff;
+  border-radius: 9px;
+  padding: 5px 10px;
+  width: fit-content;
 }
 
-.signup-logo-name {
-  font-family: "DM Serif Display", serif;
-  font-size: 17px;
-  color: #fff;
-  line-height: 1;
+.signup-logo-img {
+  display: block;
+  height: 32px;
+  width: auto;
 }
 
 .signup-logo-sub {

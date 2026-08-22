@@ -99,17 +99,29 @@
   border-bottom: 1px solid var(--sidebar-border);
 }
 
-.sidebar-logo-name {
-  font-family: "DM Serif Display", serif;
-  font-size: 17px;
-  color: #fff;
-  line-height: 1.2;
+/* Shared logo mark used everywhere the brand appears — a white chip
+   behind the image so it stays legible on dark surfaces (sidebars, the
+   auth panels' dark green background); on light surfaces the chip blends
+   in and is effectively invisible, so this is safe to reuse everywhere. */
+.brand-logo-chip {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 10px;
+  padding: 5px 10px;
+  width: fit-content;
+}
+
+.brand-logo-img {
+  display: block;
+  height: 34px;
+  width: auto;
 }
 
 .sidebar-logo-sub {
   font-size: 11px;
   color: var(--sidebar-text);
-  margin-top: 2px;
+  margin-top: 8px;
   font-weight: 300;
 }
 
@@ -351,44 +363,6 @@
   color: var(--text-primary);
   cursor: pointer;
   max-width: 180px;
-}
-
-.topbar-icons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 12px;
-}
-
-.topbar-icon-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-size: 18px;
-  position: relative;
-  transition: background 0.15s;
-}
-
-.topbar-icon-btn:hover {
-  background: #f0f0f0;
-}
-
-.topbar-badge {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--red);
-  border: 1.5px solid #fff;
 }
 
 .topbar-user {
