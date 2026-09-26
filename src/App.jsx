@@ -3,7 +3,6 @@ import { AuthProvider } from "./context/AuthContext";
 import { ClinicProvider } from "./context/ClinicContext";
 import { SettingsProvider } from "./context/SettingsContext";
 import PrivateRoute from "./components/PrivateRoute";
-
 import LandingPage from "./components/LandingPage";
 import LoginPage from "./components/LoginPage";
 import SignupPage from "./components/SignupPage";
